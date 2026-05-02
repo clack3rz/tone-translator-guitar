@@ -14,12 +14,17 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "noise suppressor": "Noise Gate",
   "noise gate": "Noise Gate",
   "gate": "Noise Gate",
+  "noise filter": "Noise Gate",
+  "noise reducer": "Noise Gate",
+  "noise reduction": "Noise Gate",
 
   // Overdrives
   "overscream": "OverScream",
   "over scream": "OverScream",
   "over-scream": "OverScream",
   "tube screamer": "OverScream",
+  "diode overdrive": "OverScream",
+  "diode od": "OverScream",
   "ts style": "OverScream",
   "ts9": "OverScream",
   "ts 9": "OverScream",
@@ -34,9 +39,16 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "jcm800": "Brit 8000",
   "jcm 800": "Brit 8000",
 
-  // Other known amp aliases
+  // Brit / Marshall style amps (New verified aliases)
   "british lead s100": "British Lead S100",
   "british tube lead 1": "British Tube Lead 1",
+  "british lead s": "British Tube Lead 1",
+  "british lead s (jcm800)": "British Tube Lead 1",
+  "british lead s100 (jcm800)": "British Tube Lead 1",
+  "british lead 100": "British Tube Lead 1",
+  "marshall s100": "British Tube Lead 1",
+
+  // Other known amp aliases
   "mesa mark v": "Mark V",
   "mark v": "Mark V",
 
@@ -71,20 +83,20 @@ const isNumericLike = (value: unknown) =>
   typeof value === "number" ||
   (typeof value === "string" && value.trim().length > 0);
 
-const normaliseTimedValue = (value: unknown): unknown => {
+const normaliseTimedValue = (value: unknown): string | number => {
   const raw = String(value).trim().toLowerCase();
 
   if (raw === "short") return "100 ms";
   if (raw === "medium") return "300 ms";
   if (raw === "long") return "700 ms";
 
-  return value;
+  return value as string | number;
 };
 
 const normaliseNoiseGateSettings = (
-  settings: Record<string, unknown> = {}
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
+  settings: Record<string, any> = {}
+): Record<string, string | number> => {
+  const out: Record<string, string | number> = {};
 
   for (const [key, value] of Object.entries(settings)) {
     const k = normalise(key);
@@ -100,6 +112,10 @@ const normaliseNoiseGateSettings = (
     }
   }
 
+  if (out["Release"] === undefined) {
+    out["Release"] = "200 ms";
+  }
+
   if (out["Depth"] === undefined) {
     out["Depth"] = "-60";
   }
@@ -108,9 +124,9 @@ const normaliseNoiseGateSettings = (
 };
 
 const normaliseOverScreamSettings = (
-  settings: Record<string, unknown> = {}
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
+  settings: Record<string, any> = {}
+): Record<string, string | number> => {
+  const out: Record<string, string | number> = {};
 
   for (const [key, value] of Object.entries(settings)) {
     const k = normalise(key);
@@ -125,9 +141,9 @@ const normaliseOverScreamSettings = (
 };
 
 const normaliseAmpSettings = (
-  settings: Record<string, unknown> = {}
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
+  settings: Record<string, any> = {}
+): Record<string, string | number> => {
+  const out: Record<string, string | number> = {};
 
   for (const [key, value] of Object.entries(settings)) {
     const k = normalise(key);
@@ -153,9 +169,9 @@ const normaliseAmpSettings = (
 };
 
 const normaliseGraphicEqSettings = (
-  settings: Record<string, unknown> = {}
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
+  settings: Record<string, any> = {}
+): Record<string, string | number> => {
+  const out: Record<string, string | number> = {};
 
   for (const [key, value] of Object.entries(settings)) {
     const k = normalise(key);
@@ -177,9 +193,9 @@ const normaliseGraphicEqSettings = (
 };
 
 const normaliseCompressorSettings = (
-  settings: Record<string, unknown> = {}
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
+  settings: Record<string, any> = {}
+): Record<string, string | number> => {
+  const out: Record<string, string | number> = {};
 
   for (const [key, value] of Object.entries(settings)) {
     const k = normalise(key);
@@ -197,9 +213,9 @@ const normaliseCompressorSettings = (
 };
 
 const normaliseCabSettings = (
-  settings: Record<string, unknown> = {}
-): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
+  settings: Record<string, any> = {}
+): Record<string, string | number> => {
+  const out: Record<string, string | number> = {};
 
   for (const [key, value] of Object.entries(settings)) {
     const k = normalise(key);
@@ -231,8 +247,8 @@ const normaliseCabSettings = (
 const normaliseSettings = (
   gearName: string,
   gearType: string,
-  settings: Record<string, unknown> = {}
-): Record<string, unknown> => {
+  settings: Record<string, any> = {}
+): Record<string, string | number> => {
   const canonicalName = normaliseGearName(gearName);
   const n = normalise(canonicalName);
 

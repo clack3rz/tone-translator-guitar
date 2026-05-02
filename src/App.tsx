@@ -171,6 +171,7 @@ export default function App() {
   const [isCopied, setIsCopied] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportFilename, setExportFilename] = useState('');
+  const [useValidationRecipes, setUseValidationRecipes] = useState(false);
  
   const getCurrentChain = () => {
     if (!toneResult) return [];
@@ -331,7 +332,8 @@ export default function App() {
         recordingData,
         userPreset,
         controller.signal,
-        youtubeUrl || undefined
+        youtubeUrl || undefined,
+        useValidationRecipes
       );
       setToneResult(toneResponse);
       
@@ -422,6 +424,22 @@ export default function App() {
               <Sliders className="w-3.5 h-3.5 text-gray-700" />
             </div>
           </div>
+
+          <label className="flex items-center gap-2 cursor-pointer group shrink-0">
+            <div 
+              className={`w-7 h-4 rounded-full p-0.5 transition-colors relative border border-white/10 ${useValidationRecipes ? 'bg-gear-accent' : 'bg-white/5'}`}
+            >
+              <div className={`w-2.5 h-2.5 bg-white rounded-full transition-transform ${useValidationRecipes ? 'translate-x-3' : 'translate-x-0'}`} />
+            </div>
+            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-tighter group-hover:text-gray-300 select-none">Recipes</span>
+            <input 
+              type="checkbox" 
+              className="hidden" 
+              checked={useValidationRecipes} 
+              onChange={(e) => setUseValidationRecipes(e.target.checked)} 
+            />
+          </label>
+
           <button 
             onClick={handleTranslate}
             disabled={isTranslating}

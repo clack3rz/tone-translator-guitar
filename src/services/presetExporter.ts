@@ -11,7 +11,27 @@ import {
 
 const DEFAULT_AMP_GUID = "8fe96936-5178-4950-9b80-d89c32534bad"; // Brit 8000 / JCM800
 const DEFAULT_CAB_GUID = "7c0b8ce1-cbb4-4e5b-9973-a572143ddb2b"; // 4x12 Brit 8000
-const DEFAULT_SPEAKER_GUID = "e372dd04b11d49588c290fbe341e97ca";
+const DEFAULT_SPEAKER_GUID = "e372dd04b11d49588c290fbe341e97ca"; // Brit 75
+const DEFAULT_MIC0_GUID = "1e41acc4-85af-4e84-bee4-eabc0be5fef1"; // Dynamic 57
+const DEFAULT_MIC1_GUID = "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb"; // Condenser 87
+
+const VERIFIED_CAB_GUIDS = [
+  { guid: "7c0b8ce1-cbb4-4e5b-9973-a572143ddb2b", aliases: ["4x12 brit 8000", "4x12 brit 800", "4x12 british 8000", "4x12 british 800", "4x12 british 30", "4x12 brit 75"] },
+  { guid: "c4ea21cc-6444-4779-9eee-62d4bc085410", aliases: ["4x12 closed 75 c", "4x12 closed 75c", "4x12 modern m", "4x12 modern m 1", "4x12 modern m1"] },
+  { guid: "67f95a0d-34e8-4206-b321-3e57c8d1b407", aliases: ["4x12 modern closed", "4x12 closed modern", "modern closed 4x12"] },
+];
+
+const VERIFIED_SPEAKER_GUIDS = [
+  { guid: "e372dd04b11d49588c290fbe341e97ca", aliases: ["brit 75", "british 75", "g12t 75", "celestion g12t 75", "75"] },
+  { guid: "a56188a9a6bc4373903dbbde779548f1", aliases: ["brit green", "greenback", "greenback g12m", "g12m", "celestion greenback", "celestion g12m"] },
+];
+
+const VERIFIED_MIC_GUIDS = [
+  { guid: "1e41acc4-85af-4e84-bee4-eabc0be5fef1", aliases: ["dynamic 57", "57", "sm57"] },
+  { guid: "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb", aliases: ["condenser 87", "87", "u87"] },
+  { guid: "0f35a776-f6db-403d-930f-6b7f42fed749", aliases: ["condenser 414", "414", "c414"] },
+  { guid: "cf06582b-4b26-42ce-9491-e00e7ab2481e", aliases: ["ribbon 121", "121", "r121"] },
+];
 
 const VERIFIED_RACK_NAMES = [
   "parametric eq",
@@ -222,18 +242,37 @@ const getSettingText = (
   return String(found?.[1] ?? "");
 };
 
+const scoreNames = (query: string, candidates: string[]) => {
+  const q = query.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return candidates.some(c => c.toLowerCase().replace(/[^a-z0-9]/g, "").includes(q)) ? 1 : 0;
+};
+
 const getMicId = (name: string) => {
   const n = name.toLowerCase();
 
-  if (n.includes("414")) return "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb";
+  if (n.includes("121") || n.includes("ribbon")) {
+    return "cf06582b-4b26-42ce-9491-e00e7ab2481e";
+  }
+
+  if (n.includes("414")) {
+    return "0f35a776-f6db-403d-930f-6b7f42fed749";
+  }
+
   if (n.includes("87") || n.includes("condenser")) {
     return "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb";
   }
-  if (n.includes("121") || n.includes("ribbon")) {
-    return "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb";
-  }
 
-  return "1e41acc4-85af-4e84-bee4-eabc0be5fef1"; // Dynamic 57 default
+  return "1e41acc4-85af-4e84-bee4-eabc0be5fef1";
+};
+
+const resolveCabGuid = (name?: string) => {
+  if (!name) return DEFAULT_CAB_GUID;
+  return VERIFIED_CAB_GUIDS.find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_CAB_GUID;
+};
+
+const resolveSpeakerGuid = (name?: string) => {
+  if (!name) return DEFAULT_SPEAKER_GUID;
+  return VERIFIED_SPEAKER_GUIDS.find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_SPEAKER_GUID;
 };
 
 const getRoomType = (cab?: SignalChainElement) => {
@@ -250,14 +289,17 @@ const buildCabSection = (
   section: "A" | "B" | "C",
   cab?: SignalChainElement
 ) => {
-  const cabGuid = resolveGuid(cab?.name, "cab", DEFAULT_CAB_GUID);
-  const mic0 = getMicId(getSettingText(cab, ["mic_1", "mic 1", "mic1"]));
+  const cabGuid = resolveCabGuid(cab?.name);
+  const speakerGuid = resolveSpeakerGuid(getSettingText(cab, ["speaker", "speaker type", "speaker swap"]));
+  
+  const mic1Req = getSettingText(cab, ["mic_1", "mic 1", "mic1"]);
+  const mic2Req = getSettingText(cab, ["mic_2", "mic 2", "mic2"]);
+  
+  const mic0 = mic1Req ? getMicId(mic1Req) : "1e41acc4-85af-4e84-bee4-eabc0be5fef1"; // Dynamic 57 fallback
+  const mic1 = mic2Req ? getMicId(mic2Req) : "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb"; // Condenser 87 fallback
   const roomType = getRoomType(cab);
 
-  // Mic1Model must remain the verified safe condenser/ribbon-style GUID.
-  const mic1 = "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb";
-
-  return `    <Cab${section} Bypass="0" Mute="0" CabModel="${cabGuid}" SpeakerModel0="${DEFAULT_SPEAKER_GUID}" SpeakerModel1="${DEFAULT_SPEAKER_GUID}" SpeakerModel2="${DEFAULT_SPEAKER_GUID}" SpeakerModel3="${DEFAULT_SPEAKER_GUID}" IRDecimation="1">\r\n        <Cab HighLevel="0.77" RoomType="${roomType}" RoomMicType="Condenser 87" Mic0Model="${mic0}" Mic1Model="${mic1}" Mic0Angle="0" Mic1Angle="0" Mic0XAxis="0" Mic1XAxis="0.16" Mic0YAxis="0" Mic1YAxis="0.41" Mic0Distance="0" Mic1Distance="0.13" Mic0Speaker="0" Mic1Speaker="1" GUILoadComplete="0" />\r\n    </Cab${section}>`;
+  return `    <Cab${section} Bypass="0" Mute="0" CabModel="${cabGuid}" SpeakerModel0="${speakerGuid}" SpeakerModel1="${speakerGuid}" SpeakerModel2="${speakerGuid}" SpeakerModel3="${speakerGuid}" IRDecimation="1">\r\n        <Cab HighLevel="0.77" RoomType="${roomType}" RoomMicType="Condenser 87" Mic0Model="${mic0}" Mic1Model="${mic1}" Mic0Angle="0" Mic1Angle="0" Mic0XAxis="0" Mic1XAxis="0.16" Mic0YAxis="0" Mic1YAxis="0.41" Mic0Distance="0" Mic1Distance="0.13" Mic0Speaker="0" Mic1Speaker="1" GUILoadComplete="0" />\r\n    </Cab${section}>`;
 };
 
 const buildStudio = () =>
@@ -365,6 +407,32 @@ const getFallbackGuidForGroup = (group: "amp" | "cab" | "stomp" | "rack") => {
   return AT5_EMPTY_SLOT_GUID;
 };
 
+const buildCabDebugAttrs = (cab?: SignalChainElement) => {
+  if (!cab) return "";
+  const cabGuid = resolveCabGuid(cab.name);
+  const speakerGuid = resolveSpeakerGuid(getSettingText(cab, ["speaker", "speaker type", "speaker swap"]));
+  
+  const mic1Req = getSettingText(cab, ["mic_1", "mic 1", "mic1"]);
+  const mic2Req = getSettingText(cab, ["mic_2", "mic 2", "mic2"]);
+  
+  const mic0 = mic1Req ? getMicId(mic1Req) : "1e41acc4-85af-4e84-bee4-eabc0be5fef1";
+  const mic1 = mic2Req ? getMicId(mic2Req) : "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb";
+  const roomType = getRoomType(cab);
+
+  const attrs = [
+    `CabModel="${cabGuid}"`,
+    `SpeakerModel0="${speakerGuid}"`,
+    `SpeakerModel1="${speakerGuid}"`,
+    `SpeakerModel2="${speakerGuid}"`,
+    `SpeakerModel3="${speakerGuid}"`,
+    `Mic0Model="${mic0}"`,
+    `Mic1Model="${mic1}"`,
+    `RoomType="${roomType}"`,
+  ];
+
+  return attrs.join(" ");
+};
+
 const makeDebugItem = (
   pair: ChainPair,
   section: string,
@@ -375,11 +443,43 @@ const makeDebugItem = (
 ): ExportDebugItem => {
   const gear = pair.normalized;
   const guid = resolveGuid(gear.name, group, getFallbackGuidForGroup(group));
-  const attrs = buildMappedParameterAttrs(
-    gear.name,
-    group,
-    gear.settings ?? {}
-  );
+
+  let attrs = "";
+  let finalReason = reason;
+
+  if (group === "cab") {
+    attrs = buildCabDebugAttrs(gear);
+
+    const mic1Req = getSettingText(gear, ["mic_1", "mic 1", "mic1"]);
+    const mic2Req = getSettingText(gear, ["mic_2", "mic 2", "mic2"]);
+    const speakerReq = getSettingText(gear, ["speaker", "speaker type", "speaker swap"]);
+
+    const isVerifiedCab = VERIFIED_CAB_GUIDS.some((v) =>
+      scoreNames(gear.name, v.aliases)
+    );
+    const isVerifiedSpeaker =
+      !speakerReq ||
+      VERIFIED_SPEAKER_GUIDS.some((v) => scoreNames(speakerReq, v.aliases));
+    const isVerifiedMic1 =
+      !mic1Req ||
+      VERIFIED_MIC_GUIDS.some((v) => scoreNames(mic1Req, v.aliases));
+    const isVerifiedMic2 =
+      !mic2Req ||
+      VERIFIED_MIC_GUIDS.some((v) => scoreNames(mic2Req, v.aliases));
+
+    if (isVerifiedCab && isVerifiedSpeaker && isVerifiedMic1 && isVerifiedMic2) {
+      finalReason = "Included with verified cab, speaker, and mic GUIDs.";
+    } else if (exported) {
+      finalReason =
+        "Included (Caution: Requested speaker/mic name not yet mapped to verified AT5 GUID; exported using safe verified template.)";
+    }
+  } else {
+    attrs = buildMappedParameterAttrs(
+      gear.name,
+      group,
+      gear.settings ?? {}
+    );
+  }
 
   return {
     original_name: pair.raw.name,
@@ -392,7 +492,7 @@ const makeDebugItem = (
     normalized_settings: gear.settings ?? {},
     exported_settings: attrs,
     exported,
-    reason,
+    reason: finalReason,
   };
 };
 
@@ -481,7 +581,10 @@ export const getExportDebugData = (
     } else if (gear.type === "cab") {
       group = "cab";
       reason = "Skipped: only CabA is currently exported.";
-    } else if (gear.type === "rack" || (gear.type === "pedal" && isPostAmpRack(gear))) {
+    } else if (
+      gear.type === "rack" ||
+      (gear.type === "pedal" && isPostAmpRack(gear))
+    ) {
       group = "rack";
 
       if (!isVerifiedRackGear(gear)) {
