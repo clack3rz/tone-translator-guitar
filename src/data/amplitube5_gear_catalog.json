@@ -1,0 +1,205 @@
+[
+  {
+    "group": "amp",
+    "guid": "65cad5a4-58a4-4a57-8186-b4b0e5f2a15c",
+    "slot": "Amp",
+    "display_name": "Brit 8000",
+    "other_observed_names": ["Marshall JCM800", "JCM 800"],
+    "used_in_presets": 1000,
+    "paramSuffix": "_JCM800AT4",
+    "knobs": [
+      { "name": "Presence", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Bass", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Middle", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Treble", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Master", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "PreAmp", "type": "range", "min": 0, "max": 10, "default": 5 }
+    ]
+  },
+  {
+    "group": "amp",
+    "guid": "8f8b6564-987d-4b8c-a45e-6532d567890a",
+    "slot": "Amp",
+    "display_name": "Dual Rectifier",
+    "other_observed_names": ["Mesa Boogie Dual Rect", "Recto"],
+    "used_in_presets": 950,
+    "paramSuffix": "_MesaRec",
+    "knobs": [
+      { "name": "Presence", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Bass", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Mid", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Treble", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Gain", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Master", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Mode", "type": "selector", "options": ["Raw", "Vintage", "Modern"], "default": "Modern" }
+    ]
+  },
+  {
+    "group": "amp",
+    "guid": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+    "slot": "Amp",
+    "display_name": "Fender '65 Deluxe Reverb",
+    "used_in_presets": 800,
+    "paramSuffix": "_Deluxe65",
+    "knobs": [
+      { "name": "Volume", "type": "range", "min": 1, "max": 10, "default": 5 },
+      { "name": "Treble", "type": "range", "min": 1, "max": 10, "default": 5 },
+      { "name": "Bass", "type": "range", "min": 1, "max": 10, "default": 5 },
+      { "name": "Reverb", "type": "range", "min": 1, "max": 10, "default": 1 },
+      { "name": "Speed", "type": "range", "min": 1, "max": 10, "default": 5 },
+      { "name": "Intensity", "type": "range", "min": 1, "max": 10, "default": 1 }
+    ]
+  },
+  {
+    "group": "amp",
+    "guid": "9e8d7c6b-5a43-2109-8f7e-6d5c4b3a2109",
+    "slot": "Amp",
+    "display_name": "Jazz Amp 120",
+    "other_observed_names": ["Roland JC-120"],
+    "used_in_presets": 600,
+    "knobs": [
+      { "name": "Bright", "type": "switch", "default": "Off" },
+      { "name": "Volume", "type": "range", "min": 0, "max": 10, "default": 4 },
+      { "name": "Treble", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Middle", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Bass", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Distortion", "type": "range", "min": 0, "max": 10, "default": 0 },
+      { "name": "Reverb", "type": "range", "min": 0, "max": 10, "default": 2 },
+      { "name": "Mode", "type": "selector", "options": ["Off", "Vib", "Chorus"], "default": "Off" }
+    ]
+  },
+  {
+    "group": "amp",
+    "guid": "f1e2d3c4-b5a6-4987-a2b3-c4d5e6f7a8b9",
+    "slot": "Amp",
+    "display_name": "Orange AD30",
+    "used_in_presets": 400,
+    "paramSuffix": "_AD30",
+    "knobs": [
+      { "name": "Gain", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Bass", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Mid", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Treble", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Master", "type": "range", "min": 0, "max": 10, "default": 5 }
+    ]
+  },
+  {
+    "group": "stomp",
+    "guid": "3b2a1c0d-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+    "slot": "Slot",
+    "display_name": "Overscream",
+    "other_observed_names": ["Overdrive", "Tube Screamer", "TS9"],
+    "used_in_presets": 2000,
+    "knobs": [
+      { "name": "Drive", "type": "range", "min": 0, "max": 10, "default": 2 },
+      { "name": "Tone", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Level", "type": "range", "min": 0, "max": 10, "default": 8 }
+    ]
+  },
+  {
+    "group": "stomp",
+    "guid": "f9e8d7c6-b5a4-4321-8f7e-6d5c4b3a2109",
+    "slot": "Slot",
+    "display_name": "Distortion",
+    "other_observed_names": ["RAT", "ProCo RAT"],
+    "used_in_presets": 1200,
+    "knobs": [
+      { "name": "Distortion", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Filter", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Volume", "type": "range", "min": 0, "max": 10, "default": 7 }
+    ]
+  },
+  {
+    "group": "stomp",
+    "guid": "773b8ea7-b54a-4a3c-99df-ffbbf6d29271",
+    "slot": "Slot",
+    "display_name": "Noise Gate",
+    "used_in_presets": 2500,
+    "knobs": [
+      { "name": "Threshold", "type": "range", "min": -100, "max": 0, "unit": "dB", "default": -60 },
+      { "name": "Release", "type": "range", "min": 20, "max": 500, "unit": "ms", "default": 50 },
+      { "name": "Depth", "type": "range", "min": -100, "max": -20, "unit": "dB", "default": -60 }
+    ]
+  },
+  {
+    "group": "stomp",
+    "guid": "a1b2c3d4-b5a6-4789-9876-0e1f2a3b4c5d",
+    "slot": "Slot",
+    "display_name": "Analog Delay",
+    "other_observed_names": ["Memory Man"],
+    "used_in_presets": 1500,
+    "knobs": [
+      { "name": "Delay", "type": "range", "min": 25, "max": 500, "unit": "ms", "default": 300 },
+      { "name": "Feedback", "type": "range", "min": 0, "max": 100, "unit": "%", "default": 30 },
+      { "name": "Blend", "type": "range", "min": 0, "max": 100, "unit": "%", "default": 50 },
+      { "name": "Ch/Vib", "type": "selector", "options": ["Chorus", "Vibrato"], "default": "Chorus" }
+    ]
+  },
+  {
+    "group": "stomp",
+    "guid": "5c4d3e2f-a1b2-4c3d-e4f5-a6b7c8d9e0f1",
+    "slot": "Slot",
+    "display_name": "Analog Chorus",
+    "other_observed_names": ["CE-1"],
+    "used_in_presets": 1300,
+    "knobs": [
+      { "name": "Rate", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Depth", "type": "range", "min": 0, "max": 10, "default": 5 },
+      { "name": "Level", "type": "range", "min": 0, "max": 10, "default": 5 }
+    ]
+  },
+  {
+    "group": "stomp",
+    "guid": "e1d2c3b4-a5f6-4987-a2b3-c4d5e6f7a8b9",
+    "slot": "Slot",
+    "display_name": "Wah",
+    "other_observed_names": ["Crybaby"],
+    "used_in_presets": 1800,
+    "knobs": [
+      { "name": "Position", "type": "range", "min": 0, "max": 100, "unit": "%", "default": 0 },
+      { "name": "Mode", "type": "selector", "options": ["Off", "On", "Auto"], "default": "Auto" }
+    ]
+  },
+  {
+    "group": "cab",
+    "guid": "7c0b8ce1-cbb4-4e5b-9973-a572143ddb2b",
+    "slot": "Cab",
+    "display_name": "4x12 Brit 8000",
+    "other_observed_names": ["Marshall 1960"],
+    "used_in_presets": 2000
+  },
+  {
+    "group": "cab",
+    "guid": "b1a2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+    "slot": "Cab",
+    "display_name": "2x12 Deluxe Reverb",
+    "used_in_presets": 900
+  },
+  {
+    "group": "rack",
+    "guid": "e5a6190f-9031-4a30-8041-36ba95f9a2e1",
+    "slot": "Rack",
+    "display_name": "Black 76",
+    "other_observed_names": ["1176", "FET Limiter"],
+    "used_in_presets": 1100,
+    "knobs": [
+      { "name": "Input", "type": "range", "min": 0, "max": 100, "default": 50 },
+      { "name": "Output", "type": "range", "min": 0, "max": 100, "default": 50 },
+      { "name": "Attack", "type": "range", "min": 0.02, "max": 0.8, "unit": "ms", "default": 0.4 },
+      { "name": "Release", "type": "range", "min": 50, "max": 1100, "unit": "ms", "default": 500 },
+      { "name": "Ratio", "type": "selector", "options": ["4", "8", "12", "20", "All"], "default": "4" }
+    ]
+  },
+  {
+    "group": "rack",
+    "guid": "d1e2f3a4-b5c6-4d7e-8f90-a1b2c3d4e5f6",
+    "slot": "Rack",
+    "display_name": "Digital Reverb",
+    "used_in_presets": 1200,
+    "knobs": [
+      { "name": "Time", "type": "range", "min": 0.6, "max": 14, "unit": "s", "default": 2 },
+      { "name": "Density", "type": "range", "min": 0, "max": 99, "default": 50 },
+      { "name": "Color", "type": "range", "min": 2, "max": 20, "unit": "kHz", "default": 10 }
+    ]
+  }
+]
