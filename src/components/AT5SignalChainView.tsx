@@ -48,21 +48,21 @@ const SECTION_ORDER = [
 ];
 
 const readablePanelStyle: React.CSSProperties = {
-  color: "#0f172a",
-  backgroundColor: "#f8fafc",
+  color: "#f1f5f9",
+  backgroundColor: "#05070a",
 };
 
 const readableCardStyle: React.CSSProperties = {
-  color: "#0f172a",
-  backgroundColor: "#ffffff",
+  color: "#f1f5f9",
+  backgroundColor: "#0f172a",
 };
 
 const readableMutedStyle: React.CSSProperties = {
-  color: "#475569",
+  color: "#94a3b8",
 };
 
 const readableValueStyle: React.CSSProperties = {
-  color: "#020617",
+  color: "#f8fafc",
 };
 
 const parseAttrString = (value: string): Record<string, string> => {
@@ -96,10 +96,10 @@ const SettingsTable = ({
   if (!entries.length) {
     return (
       <div
-        className="rounded-xl border border-slate-200 p-3"
+        className="rounded-xl border border-slate-800 p-3"
         style={readableCardStyle}
       >
-        <div className="text-sm font-bold" style={{ color: "#1e293b" }}>
+        <div className="text-sm font-bold" style={{ color: "#f1f5f9" }}>
           {title}
         </div>
         <div className="mt-1 text-sm" style={readableMutedStyle}>
@@ -111,21 +111,21 @@ const SettingsTable = ({
 
   return (
     <div
-      className="rounded-xl border border-slate-200 p-3"
+      className="rounded-xl border border-slate-800 p-3"
       style={readableCardStyle}
     >
-      <div className="mb-2 text-sm font-bold" style={{ color: "#1e293b" }}>
+      <div className="mb-2 text-sm font-bold" style={{ color: "#f1f5f9" }}>
         {title}
       </div>
       <div className="space-y-1">
         {entries.map(([key, value]) => (
           <div
             key={key}
-            className="grid grid-cols-[170px_1fr] gap-2 border-b border-slate-100 pb-1 text-xs leading-tight last:border-0 last:pb-0"
+            className="grid grid-cols-[170px_1fr] gap-2 border-b border-white/5 pb-1 text-xs leading-tight last:border-0 last:pb-0"
           >
             <div
               className="font-mono font-semibold"
-              style={{ color: "#334155" }}
+              style={{ color: "#94a3b8" }}
             >
               {key}
             </div>
@@ -155,7 +155,7 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
 
   return (
     <div
-      className="rounded-2xl border border-slate-200 p-4 shadow-sm"
+      className="rounded-2xl border border-slate-800 p-4 shadow-xl"
       style={readableCardStyle}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -170,8 +170,8 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
 
         <div className="flex flex-wrap gap-2">
           <span
-            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold"
-            style={{ color: "#334155" }}
+             className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold"
+            style={{ color: "#cbd5e1" }}
           >
             {item.slot_section}
             {item.slot_index >= 0 ? ` / Slot ${item.slot_index}` : ""}
@@ -179,17 +179,17 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
 
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              item.exported ? "bg-green-100" : "bg-red-100"
+              item.exported ? "bg-green-950/40" : "bg-red-950/40"
             }`}
-            style={{ color: item.exported ? "#166534" : "#991b1b" }}
+            style={{ color: item.exported ? "#4ade80" : "#f87171" }}
           >
             {item.exported ? "Exported" : "Skipped"}
           </span>
 
           {hasWarning && (
             <span
-              className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold"
-              style={{ color: "#92400e" }}
+              className="rounded-full bg-amber-950/40 px-3 py-1 text-xs font-semibold"
+              style={{ color: "#fbbf24" }}
             >
               Check
             </span>
@@ -199,7 +199,7 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
 
       <div className="mt-3 grid gap-2 text-sm" style={readableValueStyle}>
         <div>
-          <span className="font-bold" style={{ color: "#334155" }}>
+          <span className="font-bold" style={{ color: "#94a3b8" }}>
             Type:
           </span>{" "}
           <span className="font-mono font-semibold" style={readableValueStyle}>
@@ -208,7 +208,7 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
         </div>
 
         <div>
-          <span className="font-bold" style={{ color: "#334155" }}>
+          <span className="font-bold" style={{ color: "#94a3b8" }}>
             GUID:
           </span>{" "}
           <span
@@ -220,7 +220,7 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
         </div>
 
         <div>
-          <span className="font-bold" style={{ color: "#334155" }}>
+          <span className="font-bold" style={{ color: "#94a3b8" }}>
             Reason:
           </span>{" "}
           <span style={readableValueStyle}>{item.reason}</span>
@@ -290,27 +290,27 @@ export const AT5SignalChainView: React.FC<Props> = ({ debugData }) => {
 
   return (
     <section
-      className="rounded-2xl border border-slate-200 p-4"
+      className="rounded-2xl border border-slate-800 p-6 shadow-2xl"
       style={readablePanelStyle}
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold" style={readableValueStyle}>
+          <h2 className="text-2xl font-bold tracking-tight" style={readableValueStyle}>
             AT5 Export Signal Chain
           </h2>
-          <p className="text-sm" style={readableMutedStyle}>
+          <p className="text-sm mt-1" style={readableMutedStyle}>
             Visual view of the actual exported AmpliTube chain.
           </p>
-          <p className="mt-1 text-sm" style={readableMutedStyle}>
+          <p className="mt-2 text-[10px] font-mono uppercase tracking-widest opacity-60" style={readableMutedStyle}>
             {debugData.exported_xml_summary}
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={copyJson}
-            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold shadow-sm"
+            className="rounded-xl bg-white/5 hover:bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-widest border border-white/10 transition-all shadow-lg active:scale-95"
             style={{ color: "#ffffff" }}
           >
             Copy Chain JSON
@@ -319,15 +319,15 @@ export const AT5SignalChainView: React.FC<Props> = ({ debugData }) => {
           <button
             type="button"
             onClick={exportJson}
-            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
-            style={{ color: "#0f172a" }}
+            className="rounded-xl bg-white/5 hover:bg-white/10 px-5 py-2.5 text-xs font-bold uppercase tracking-widest border border-white/10 transition-all shadow-lg active:scale-95"
+            style={{ color: "#ffffff" }}
           >
             Export Chain JSON
           </button>
         </div>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-8">
         {SECTION_ORDER.map((section) => {
           const items = grouped[section] ?? [];
           const showStatic =
@@ -339,15 +339,15 @@ export const AT5SignalChainView: React.FC<Props> = ({ debugData }) => {
 
           return (
             <div key={section} style={readableValueStyle}>
-              <div className="mb-2 flex items-center gap-2">
+              <div className="mb-3 flex items-center gap-3">
                 <div
-                  className="rounded-full bg-slate-900 px-3 py-1 text-sm font-bold"
+                  className="rounded-lg bg-black px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.2em] border border-white/10"
                   style={{ color: "#ffffff" }}
                 >
                   {section}
                 </div>
                 {items.length > 0 && (
-                  <div className="text-sm" style={readableMutedStyle}>
+                  <div className="text-[10px] font-mono uppercase tracking-widest" style={readableMutedStyle}>
                     {items.length} item{items.length === 1 ? "" : "s"}
                   </div>
                 )}
@@ -355,7 +355,7 @@ export const AT5SignalChainView: React.FC<Props> = ({ debugData }) => {
 
               {showStatic && !items.length ? (
                 <div
-                  className="rounded-2xl border border-dashed border-slate-300 p-4 text-sm"
+                  className="rounded-2xl border border-dashed border-slate-800 p-6 text-sm italic"
                   style={readableCardStyle}
                 >
                   {section === "Input" &&
