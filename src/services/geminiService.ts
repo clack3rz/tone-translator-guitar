@@ -84,7 +84,8 @@ export async function translateTone(
   currentAudio?: { base64: string; mimeType: string },
   userPreset?: any,
   signal?: AbortSignal,
-  youtubeUrl?: string
+  youtubeUrl?: string,
+  useValidationRecipes: boolean = false
 ): Promise<ToneResult> {
   const fullPrompt = MASTER_PROMPT.replace('{user_input}', textPrompt);
   const parts: any[] = [{ text: fullPrompt }];
@@ -95,6 +96,83 @@ export async function translateTone(
 
   if (userPreset) {
     parts.push({ text: `Existing Preset Context: ${JSON.stringify(userPreset)}` });
+  }
+
+  // Task 6 — Deterministic Kill 'Em All validation recipe
+  const lowerPrompt = textPrompt.toLowerCase();
+  if (
+    useValidationRecipes &&
+    lowerPrompt.includes("metallica") &&
+    (lowerPrompt.includes("kill em all") || lowerPrompt.includes("kill 'em all")) &&
+    lowerPrompt.includes("rhythm")
+  ) {
+    return {
+      tone_summary: {
+        style: "1980's Metallica Kill 'Em All rhythm v2",
+        gain_level: "high",
+        noise_level: "moderate"
+      },
+      signal_chain: [
+        {
+          type: "pedal",
+          name: "Noise Gate",
+          settings: {
+            "Threshold": "-45 dB",
+            "Release": "150 ms",
+            "Depth": "-60"
+          }
+        },
+        {
+          type: "pedal",
+          name: "OverScream",
+          settings: {
+            "Drive": 1.0,
+            "Tone": 6.8,
+            "Level": 9.0
+          }
+        },
+        {
+          type: "amp",
+          name: "Brit 8000",
+          settings: {
+            "Pre Amp": 7.0,
+            "Bass": 4.0,
+            "Middle": 7.5,
+            "Treble": 7.0,
+            "Presence": 7.8,
+            "Master": 6.0
+          }
+        },
+        {
+          type: "cab",
+          name: "4x12 Brit 8000",
+          settings: {
+            "Speaker": "Brit 75",
+            "Mic_1": "Dynamic 57",
+            "Mic_2": "Ribbon 121",
+            "Room": "Large Studio"
+          }
+        },
+        {
+          type: "rack",
+          name: "Graphic EQ",
+          settings: {
+            "100Hz": "-3 dB",
+            "400Hz": "-2 dB",
+            "800Hz": "+1 dB",
+            "1600Hz": "+3 dB",
+            "3150Hz": "+4 dB",
+            "6300Hz": "+1 dB"
+          }
+        }
+      ],
+      engineering_notes: {
+        gain_strategy: "OverScream clean boost into high-gain Brit 8000.",
+        noise_control: "Fast noise gate threshold set to clip early thrash silence.",
+        eq_strategy: "V-shape with forward high-mids via Graphic EQ."
+      },
+      confidence: 100
+    };
   }
 
   if (targetAudio) {

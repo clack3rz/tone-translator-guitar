@@ -20,6 +20,7 @@ export interface ResolvedParameter {
   max: number;
   unit?: string;
   aliases?: string[];
+  defaultValue?: number | string;
   transform?: VerifiedParamDef["transform"];
 }
 
@@ -140,14 +141,37 @@ export function getParameterDefinitions(
   });
 }
 
-const parseNumericSetting = (value: unknown, transform?: VerifiedParamDef["transform"]): number | undefined => {
+const parseSettingValue = (
+  value: unknown,
+  transform?: VerifiedParamDef["transform"]
+): string | number | undefined => {
+  if (value === undefined || value === null) return undefined;
+  
+  const text = String(value).trim().toLowerCase();
+  if (text === "" || text === "undefined" || text === "null") return undefined;
+  
+  if (transform === "black76Ratio") {
+    if (text.includes("20")) return "_20";
+    if (text.includes("12")) return "_12";
+    if (text.includes("8")) return "_8";
+    if (text.includes("4")) return "_4";
+    if (text.includes("all")) return "All";
+    
+    const num = parseFloat(text);
+    if (num === 20) return "_20";
+    if (num === 12) return "_12";
+    if (num === 8) return "_8";
+    if (num === 4) return "_4";
+    
+    return "_4";
+  }
+
   if (typeof value === "number") return value;
 
-  const text = String(value).trim().toLowerCase();
   let n: number | undefined;
 
-  // Compressor Ratio mapping (Black 76 etc)
-  if (text.includes("ratio")) {
+  // Compressor Ratio mapping (Generic fallback - legacy)
+  if (text.includes("ratio") && !transform) {
     if (text.includes("4:1") || text === "4" || text === "_4") n = 0;
     else if (text.includes("8:1") || text === "8" || text === "_8") n = 1;
     else if (text.includes("12:1") || text === "12" || text === "_12") n = 2;
@@ -157,7 +181,14 @@ const parseNumericSetting = (value: unknown, transform?: VerifiedParamDef["trans
 
   if (n === undefined) {
     const first = text.match(/-?\d+(?:\.\d+)?(?:e-?\d+)?/i)?.[0];
-    if (!first) return undefined;
+    if (!first) {
+      // If no numeric data found, but it's a non-empty alphanumeric string,
+      // treat it as a potential enum value (e.g. "Low", "All").
+      if (text.length > 0 && /^[a-z0-9_\s]+$/i.test(text)) {
+        return String(value).trim();
+      }
+      return undefined;
+    }
     n = parseFloat(first);
   }
   if (!Number.isFinite(n)) return undefined;
@@ -170,18 +201,41 @@ const parseNumericSetting = (value: unknown, transform?: VerifiedParamDef["trans
     if (text.includes("khz")) n *= 1000;
   }
 
+  if (transform === "noiseGateDepth") {
+    // If input is 0..10 and not explicitly dB, convert to AT5 dB range: -100..-20
+    if (!text.includes("db") && n >= 0 && n <= 10) {
+      // 0 -> -100, 10 -> -20. Linear mapping: -100 + (n * 8)
+      n = -100 + n * 8;
+    }
+    // Clamp to AT5 range
+    n = Math.min(-20, Math.max(-100, n));
+  }
+
+  if (transform === "black76InputOutput") {
+    // Treat values as dB if they include dB or are numeric.
+    // UI range is -99.0 dB to 0.0 dB.
+    // Convert to linear: linear = Math.pow(10, db / 20)
+    
+    let db = n;
+    if (db > 0) db = 0; // Clamp positive to 0 dB
+    if (db < -99) db = -99; // Clamp lower bound
+    
+    n = Math.pow(10, db / 20);
+  }
+
   return n;
 };
 
-export function clampParameterValue(
+export function resolveParameterValue(
   value: unknown,
   min: number,
   max: number,
   transform?: VerifiedParamDef["transform"]
-): number | undefined {
-  const n = parseNumericSetting(value, transform);
-  if (!Number.isFinite(n)) return undefined;
-  return Math.min(max, Math.max(min, n as number));
+): string | number | undefined {
+  const v = parseSettingValue(value, transform);
+  if (typeof v === "string") return v;
+  if (v === undefined || !Number.isFinite(v)) return undefined;
+  return Math.min(max, Math.max(min, v as number));
 }
 
 export function buildMappedParameterAttrs(
@@ -212,14 +266,22 @@ export function buildMappedParameterAttrs(
   return defs
     .map((def) => {
       const lookupNames = [def.friendlyName, def.xmlName, ...(def.aliases ?? [])];
-      const raw = lookupNames
+      let raw = lookupNames
         .map((name) => normalisedSettings.get(normalise(name)))
         .find((value) => value !== undefined);
 
-      const clamped = clampParameterValue(raw, def.min, def.max, def.transform);
-      if (clamped === undefined) return null;
+      if (raw === undefined && def.defaultValue !== undefined) {
+        raw = def.defaultValue;
+      }
 
-      return `${def.xmlName}="${Number(clamped.toFixed(6))}"`;
+      const resolved = resolveParameterValue(raw, def.min, def.max, def.transform);
+      if (resolved === undefined) return null;
+
+      if (typeof resolved === "string") {
+        return `${def.xmlName}="${escapeXmlAttr(resolved)}"`;
+      }
+
+      return `${def.xmlName}="${Number(resolved.toFixed(6))}"`;
     })
     .filter(Boolean)
     .join(" ");
