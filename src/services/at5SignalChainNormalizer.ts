@@ -28,6 +28,35 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "ts style": "OverScream",
   "ts9": "OverScream",
   "ts 9": "OverScream",
+  "ts808": "OverScream",
+  "ts 808": "OverScream",
+  "blues driver": "Blues Driver",
+  "bd-2": "Blues Driver",
+  "bd2": "Blues Driver",
+  "metal zone": "Metal Zone",
+  "mt-2": "Metal Zone",
+  "mt2": "Metal Zone",
+  "revv g3": "Revv G3",
+  "g3": "Revv G3",
+  "centaur": "Centaur",
+  "klon": "Centaur",
+  "pro co rat": "The RAT",
+  "rat": "The RAT",
+  "fulltone ocd": "OCD",
+  "ocd": "OCD",
+  "morning glory": "Morning Glory",
+  "mxr distortion +": "Distortion +",
+  "distortion+": "Distortion +",
+  "mxr carbon copy": "Carbon Copy",
+  "carbon copy": "Carbon Copy",
+  "reverb": "Digital Reverb", // Mapping RV-6 style requests
+  "tremolo": "Tremolo",
+
+  // Fuzz
+  "fuzz face": "Tone Bender", // Mapping to Tone Bender or similar if Fuzz Face isn't explicit
+  "germanium fuzz": "Tone Bender",
+  "big muff": "Big Pig",
+  "big pig": "Big Pig",
 
   // Brit / Marshall style amps
   "brit 800": "Brit 8000",
@@ -38,6 +67,43 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "marshall jcm800": "Brit 8000",
   "jcm800": "Brit 8000",
   "jcm 800": "Brit 8000",
+  "jazz 120": "Jazz Amp 120",
+  "jc120": "Jazz Amp 120",
+  "jc 120": "Jazz Amp 120",
+  "jazz amp": "Jazz Amp 120",
+  "plexi": "British Lead S100",
+  "super lead": "British Lead S100",
+  "marshall plexi": "British Lead S100",
+
+  // Vox style
+  "ac30": "British Copper 30 TB",
+  "ac 30": "British Copper 30 TB",
+  "vox ac30": "British Copper 30 TB",
+
+  // Mesa / Modern High Gain
+  "rectifier": "Dual Rectifier",
+  "dual rec": "Dual Rectifier",
+  "triple rec": "Dual Rectifier",
+  "mesa rectifier": "Dual Rectifier",
+  "modern lead": "Dual Rectifier",
+  "4x12 recto traditional": "4x12 Recto Traditional Slant",
+  "4x12 recto": "4x12 Recto Traditional Slant",
+  "4x12 recto slant": "4x12 Recto Traditional Slant",
+  "4x12 recto traditional slant": "4x12 Recto Traditional Slant",
+  "mesa recto 4x12": "4x12 Recto Traditional Slant",
+  "4x12 mesa recto traditional": "4x12 Recto Traditional Slant",
+  "4x12 mesa recto traditional slant": "4x12 Recto Traditional Slant",
+  "4x12 standard recto": "4x12 Standard Rectifier",
+  "4x12 oversize": "4x12 Standard Rectifier",
+  "4x12 mesa boogie": "4x12 Standard Rectifier",
+
+  // Fender style
+  "twin reverb": "Twin Reverb",
+  "fender twin": "Twin Reverb",
+  "deluxe reverb": "Deluxe Reverb",
+  "fender deluxe": "Deluxe Reverb",
+  "princeton": "Princeton",
+  "bassman": "Bassman",
 
   // Brit / Marshall style amps (New verified aliases)
   "british lead s100": "British Lead S100",
@@ -53,12 +119,15 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "mark v": "Mark V",
 
   // Cabs
+  "4x12 british lead s100": "4x12 British Lead S100",
+  "4x12 british tube lead 1": "Cabinet British Tube Lead 1",
   "4x12 brit 800": "4x12 Brit 8000",
   "4x12 brit 8000": "4x12 Brit 8000",
   "4x12 modern m 1": "4x12 Brit 8000",
   "4x12 british 30": "4x12 Brit 8000",
   "4x12 british 30 v30 speakers": "4x12 Brit 8000",
   "v30 4x12": "4x12 Brit 8000",
+  "greenbacks": "4x12 Brit 8000", // Generic mapping for greenback cabs if needed
 
   // EQ / rack aliases
   "graphic eq": "10 Band Graphic",
@@ -220,11 +289,22 @@ const normaliseCabSettings = (
   for (const [key, value] of Object.entries(settings)) {
     const k = normalise(key);
 
-    if (k === "speaker" || k === "speaker swap" || k === "speaker type") {
+    if (k === "speaker" || k === "speaker swap" || k === "speaker type" || k === "speakers") {
       out["Speaker"] = value;
-    } else if (k === "mic 1" || k === "mic1") {
+    } else if (k === "speaker a") {
+      // AI sometimes confuses mic A with speaker A
+      if (/(57|87|414|421|121|mic|condenser|dynamic|ribbon)/i.test(String(value))) {
+        out["Mic_1"] = value;
+      } else {
+        out["Speaker"] = value;
+      }
+    } else if (k === "speaker b") {
+      if (/(57|87|414|421|121|mic|condenser|dynamic|ribbon)/i.test(String(value))) {
+        out["Mic_2"] = value;
+      }
+    } else if (k === "mic 1" || k === "mic1" || k === "mic a") {
       out["Mic_1"] = value;
-    } else if (k === "mic 2" || k === "mic2") {
+    } else if (k === "mic 2" || k === "mic2" || k === "mic b") {
       out["Mic_2"] = value;
     } else if (k === "mic 1 level" || k === "mic1 level") {
       out["Mic_1_Level"] = value;

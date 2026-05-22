@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "gear_item": {
+      "title": "AT5 Gear Item",
+      "description": "A piece of gear in the AmpliTude 5 catalog",
+      "type": "object",
+      "properties": {
+        "group": { "type": "string" },
+        "guid": { "type": "string" },
+        "slot": { "type": "string" },
+        "displayName": { "type": "string" },
+        "otherNames": { "type": "array", "items": { "type": "string" } },
+        "usedInPresets": { "type": "integer" },
+        "paramSuffix": { "type": "string" },
+        "knobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "min": { "type": "number" },
+              "max": { "type": "number" },
+              "default": { "type": "any" },
+              "options": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["group", "guid", "displayName"]
+    },
+    "verified_mapping": {
+      "title": "Verified Protocol Mapping",
+      "description": "A mapping between a GUID and its known aliases for Cabs, Speakers, or Mics",
+      "type": "object",
+      "properties": {
+        "guid": { "type": "string" },
+        "aliases": { "type": "array", "items": { "type": "string" } },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["guid", "aliases"]
+    }
+  },
+  "firestore": {
+    "/catalogue/{guid}": {
+      "schema": "gear_item",
+      "description": "Main gear catalogue"
+    },
+    "/verified_cabs/{guid}": {
+      "schema": "verified_mapping",
+      "description": "Verified Cabinet GUID mappings"
+    },
+    "/verified_speakers/{guid}": {
+      "schema": "verified_mapping",
+      "description": "Verified Speaker GUID mappings"
+    },
+    "/verified_mics/{guid}": {
+      "schema": "verified_mapping",
+      "description": "Verified Microphone GUID mappings"
+    }
+  }
+}

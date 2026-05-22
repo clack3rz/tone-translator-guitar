@@ -1,16 +1,27 @@
 
 import { XMLParser } from "fast-xml-parser";
-import { AT5_CATALOG } from "./at5Catalog";
+import { getAt5Catalog } from "./at5Catalog";
+import { 
+  getVerifiedCabs, 
+  getVerifiedMics, 
+  getVerifiedSpeakers 
+} from "./at5VerifiedProtocols";
 import { 
   ImportResults, 
   DetectedGear, 
   CataloguePatch, 
   GearType, 
   CatalogueStatus,
-  ParameterImport
+  ParameterImport,
+  DetectedProtocol
 } from "../types/at5ImportTypes";
 
 const AT5_EMPTY_SLOT_GUID = "773b8ea7-b54a-4a3c-99df-ffbbf6d29271";
+
+const normalizeGuid = (guid: any): string => {
+  if (typeof guid !== 'string') return String(guid || '').toLowerCase().replace(/-/g, '').trim();
+  return guid.toLowerCase().replace(/-/g, '').trim();
+};
 
 export async function parseAt5pPreset(file: File): Promise<ImportResults> {
   const text = await file.text();
@@ -18,6 +29,8 @@ export async function parseAt5pPreset(file: File): Promise<ImportResults> {
     ignoreAttributes: false,
     attributeNamePrefix: "",
   });
+
+  const catalog = getAt5Catalog();
 
   try {
     const jsonObj = parser.parse(text);
@@ -33,6 +46,7 @@ export async function parseAt5pPreset(file: File): Promise<ImportResults> {
     }
 
     const detectedGear: DetectedGear[] = [];
+    const detectedProtocols: DetectedProtocol[] = [];
     const warnings: string[] = [];
 
     // Sections to scan
@@ -75,16 +89,91 @@ export async function parseAt5pPreset(file: File): Promise<ImportResults> {
           slotNode = node[`Slot${i}`];
         }
 
-        if (!guid || guid === AT5_EMPTY_SLOT_GUID) continue;
+        if (!guid || normalizeGuid(guid) === normalizeGuid(AT5_EMPTY_SLOT_GUID)) continue;
 
-        const gear = analyzeGear(guid, slotNode, section.type as GearType, `${section.name}/Slot${i}`);
+        console.log(`[Import] Section: ${section.name}, Type: ${section.type}, Raw GUID: ${guid}`);
+
+        // Handle case where XML parser might return literal "null" or "undefined" as strings
+        if (String(guid).toLowerCase() === "null" || String(guid).toLowerCase() === "undefined") {
+          warnings.push(`Detected null/undefined GUID at ${section.name}/Slot${i}. This is usually a corrupt or placeholder slot.`);
+          continue;
+        }
+
+        // For Cabs, we extract attributes from the parent node too (like SpeakerModel)
+        const cabContext = section.type === "cab" ? node : null;
+        const gear = analyzeGear(guid, slotNode, section.type as GearType, `${section.name}/Slot${i}`, cabContext);
         detectedGear.push(gear);
+
+        // Sub-scanning for Cabinet components (Mics, Speakers)
+        if (section.type === "cab") {
+          const mic0 = slotNode?.Mic0Model;
+          const mic1 = slotNode?.Mic1Model;
+          
+          const normalizedGuid = normalizeGuid(guid);
+          if (!getVerifiedCabs().some(c => normalizeGuid(c.guid) === normalizedGuid)) {
+            const existingProto = getVerifiedCabs().find(c => normalizeGuid(c.guid) === normalizedGuid);
+            detectedProtocols.push({
+              type: "cab_alias",
+              guid: guid,
+              suggestedName: gear.displayName,
+              sourcePreset: file.name,
+              status: "new",
+              existingAliases: existingProto?.aliases
+            });
+          }
+
+          const normalizedMic0 = mic0 ? normalizeGuid(mic0) : "";
+          const existingMic0 = mic0 ? getVerifiedMics().find(m => normalizeGuid(m.guid) === normalizedMic0) : null;
+          if (mic0 && !existingMic0) {
+            detectedProtocols.push({
+              type: "mic",
+              guid: mic0,
+              suggestedName: slotNode.Mic0Name || `Unknown Mic (${mic0.substring(0, 8)})`,
+              sourcePreset: file.name,
+              status: "new"
+            });
+          } else if (mic0 && existingMic0) {
+             // In expert mode we might want to see verified protocols too if we ever allow editing them here
+          }
+
+          const normalizedMic1 = mic1 ? normalizeGuid(mic1) : "";
+          const existingMic1 = mic1 ? getVerifiedMics().find(m => normalizeGuid(m.guid) === normalizedMic1) : null;
+          if (mic1 && !existingMic1) {
+            detectedProtocols.push({
+              type: "mic",
+              guid: mic1,
+              suggestedName: slotNode.Mic1Name || `Unknown Mic (${mic1.substring(0, 8)})`,
+              sourcePreset: file.name,
+              status: "new"
+            });
+          }
+
+          // Scan for speakers in BOTH nodes (AmpliTube uses both depending on preset version)
+          for (let s = 0; s < 4; s++) {
+            const spkInSlot = slotNode?.[`SpeakerModel${s}`];
+            const spkInNode = node?.[`SpeakerModel${s}`];
+            const spk = spkInSlot || spkInNode;
+            
+            const normalizedSpk = spk ? normalizeGuid(spk) : "";
+            const existingSpk = spk ? getVerifiedSpeakers().find(v => normalizeGuid(v.guid) === normalizedSpk) : null;
+            if (spk && !existingSpk) {
+              detectedProtocols.push({
+                type: "speaker",
+                guid: spk,
+                suggestedName: `Unknown Speaker (${spk.substring(0, 8)})`,
+                sourcePreset: file.name,
+                status: "new"
+              });
+            }
+          }
+        }
       }
     }
 
     return {
       sourceFileName: file.name,
-      detectedGear,
+      detectedGear: [...new Map(detectedGear.map(g => [g.modelGuid, g])).values()], // Deduplicate by GUID
+      detectedProtocols: [...new Map(detectedProtocols.map(p => [p.guid, p])).values()], // Deduplicate by GUID
       warnings,
       errors: [],
     };
@@ -99,15 +188,21 @@ export async function parseAt5pPreset(file: File): Promise<ImportResults> {
   }
 }
 
-function analyzeGear(guid: string, slotNode: any, gearType: GearType, xmlPath: string): DetectedGear {
-  const catalogItem = AT5_CATALOG.find(item => item.guid.toLowerCase() === guid.toLowerCase());
+function analyzeGear(guid: string, slotNode: any, gearType: GearType, xmlPath: string, cabNode: any = null): DetectedGear {
+  const catalog = getAt5Catalog();
+  const normalizedGuid = normalizeGuid(guid);
+  const catalogItem = catalog.find(item => normalizeGuid(item.guid) === normalizedGuid);
   
   const parameters: ParameterImport[] = [];
-  if (slotNode) {
-    Object.entries(slotNode).forEach(([key, value]) => {
-      // Skip internal attributes
-      if (["Bypass", "FullScreen", "GUILoadComplete"].includes(key)) return;
-      if (typeof value === "object") return; // Skip Nested nodes
+  
+  // Combine attributes from both nodes if it's a cab
+  const combinedAttributes = cabNode ? { ...cabNode, ...slotNode } : slotNode;
+
+  if (combinedAttributes) {
+    Object.entries(combinedAttributes).forEach(([key, value]) => {
+      // Skip internal attributes or child objects
+      if (["Bypass", "FullScreen", "GUILoadComplete", "Cab", "Amp"].includes(key)) return;
+      if (typeof value === "object") return; 
 
       parameters.push({
         name: key,
@@ -138,7 +233,8 @@ function analyzeGear(guid: string, slotNode: any, gearType: GearType, xmlPath: s
       
       if (mostCommon) {
         // Try to match by suffix
-        const matchBySuffix = AT5_CATALOG.find(item => item.paramSuffix === `_${mostCommon}`);
+        const catalog = getAt5Catalog();
+        const matchBySuffix = catalog.find(item => item.paramSuffix === `_${mostCommon}`);
         if (matchBySuffix) {
           status = "possible_match";
           displayName = matchBySuffix.displayName;
@@ -160,19 +256,28 @@ function analyzeGear(guid: string, slotNode: any, gearType: GearType, xmlPath: s
     parameters,
     importRecommendation: recommendation,
     rawXmlPath: xmlPath,
-    isEnabled
+    isEnabled,
+    existingAliases: catalogItem?.otherNames
   };
 }
 
 export function generateCataloguePatch(results: ImportResults): CataloguePatch {
+  const catalog = getAt5Catalog();
   const newGear = results.detectedGear.filter(g => g.catalogueStatus === "new");
   const updatedGear = results.detectedGear.filter(g => g.catalogueStatus === "parameter_update" || g.catalogueStatus === "possible_match");
+  const newProtocols = results.detectedProtocols || [];
   
   // Checking for conflicts (same name but different GUID or vice-versa)
   const conflicts: DetectedGear[] = [];
   results.detectedGear.forEach(gear => {
-    const existing = AT5_CATALOG.find(c => c.displayName.toLowerCase() === gear.displayName.toLowerCase());
+    const existing = catalog.find(c => c.displayName.toLowerCase() === gear.displayName.toLowerCase());
     if (existing && existing.guid.toLowerCase() !== gear.modelGuid?.toLowerCase()) {
+      conflicts.push(gear);
+    }
+    
+    // Check for GUID conflict with a different name
+    const existingByGuid = catalog.find(c => c.guid.toLowerCase() === gear.modelGuid?.toLowerCase());
+    if (existingByGuid && existingByGuid.displayName.toLowerCase() !== gear.displayName.toLowerCase()) {
       conflicts.push(gear);
     }
   });
@@ -180,7 +285,53 @@ export function generateCataloguePatch(results: ImportResults): CataloguePatch {
   return {
     newGear,
     updatedGear,
-    conflicts,
-    requiresManualReview: [...newGear, ...updatedGear, ...conflicts]
+    conflicts: [...new Set(conflicts)],
+    newProtocols,
+    requiresManualReview: [...newGear, ...updatedGear, ...conflicts, ...newProtocols]
   };
+}
+
+export function generateProtocolSnippet(protocol: DetectedProtocol): string {
+  const listName = {
+    mic: "VERIFIED_MIC_GUIDS",
+    speaker: "VERIFIED_SPEAKER_GUIDS",
+    cab_alias: "VERIFIED_CAB_GUIDS"
+  }[protocol.type];
+
+  const comment = `// For ${listName} in at5VerifiedProtocols.ts`;
+  return `  ${comment}\n  { guid: "${protocol.guid}", aliases: ["${protocol.suggestedName.toLowerCase()}"] },`;
+}
+
+export function generateTypeScriptEntry(gear: DetectedGear): string {
+  const nameParts = gear.displayName.split(' ');
+  const lastWord = nameParts[nameParts.length - 1].replace(/[^a-zA-Z0-9]/g, '');
+  const suffix = gear.parameters.length > 0 ? gear.parameters[0].name.split('_')[1] || lastWord : lastWord;
+  
+  return `  {
+    displayName: "${gear.displayName}",
+    guid: "${gear.modelGuid}",
+    group: "${gear.gearType === 'pedal' ? 'stomp' : gear.gearType}",
+    slot: "${gear.slotType || ''}",
+    paramSuffix: "_${suffix}", 
+    knobs: [
+${gear.parameters.slice(0, 8).map(p => `      { name: "${p.name}", type: "range", min: 0, max: 10, default: ${typeof p.value === 'number' ? p.value : `"${p.value}"`} },`).join('\n')}
+    ]
+  },`;
+}
+
+export function generateVerifiedParameterEntry(gear: DetectedGear): string {
+  return `  {
+    name: "${gear.displayName}",
+    category: "${gear.gearType === 'pedal' ? 'stomp' : gear.gearType}",
+    realId: "${gear.modelGuid}",
+    preferredSection: "${gear.slotType || 'StompB1'}",
+    params: [
+${gear.parameters.map(p => `      { friendlyName: "${p.name}", xmlName: "${p.name}", min: 0, max: 10, aliases: ["${p.name.toLowerCase()}"] },`).join('\n')}
+    ],
+  },`;
+}
+
+export function generateNormalizerAlias(gear: DetectedGear): string {
+  const normalized = gear.displayName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return `  "${normalized}": "${gear.displayName}",`;
 }

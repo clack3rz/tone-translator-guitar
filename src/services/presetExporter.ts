@@ -3,35 +3,19 @@
 
 import { normaliseSignalChain } from "./at5SignalChainNormalizer";
 import { ToneResult, SignalChainElement } from "../types";
-import { AT5_EMPTY_SLOT_GUID, findAT5GearGuid } from "./at5Catalog";
+import { AT5_EMPTY_SLOT_GUID, findAT5GearGuid, findAT5Gear } from "./at5Catalog";
 import {
   buildMappedParameterAttrs,
   resolveVerifiedOrManifestRealId,
 } from "./at5ParameterManifest";
+
+import { getVerifiedCabs, getVerifiedSpeakers, getVerifiedMics } from "./at5VerifiedProtocols";
 
 const DEFAULT_AMP_GUID = "8fe96936-5178-4950-9b80-d89c32534bad"; // Brit 8000 / JCM800
 const DEFAULT_CAB_GUID = "7c0b8ce1-cbb4-4e5b-9973-a572143ddb2b"; // 4x12 Brit 8000
 const DEFAULT_SPEAKER_GUID = "e372dd04b11d49588c290fbe341e97ca"; // Brit 75
 const DEFAULT_MIC0_GUID = "1e41acc4-85af-4e84-bee4-eabc0be5fef1"; // Dynamic 57
 const DEFAULT_MIC1_GUID = "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb"; // Condenser 87
-
-const VERIFIED_CAB_GUIDS = [
-  { guid: "7c0b8ce1-cbb4-4e5b-9973-a572143ddb2b", aliases: ["4x12 brit 8000", "4x12 brit 800", "4x12 british 8000", "4x12 british 800", "4x12 british 30", "4x12 brit 75"] },
-  { guid: "c4ea21cc-6444-4779-9eee-62d4bc085410", aliases: ["4x12 closed 75 c", "4x12 closed 75c", "4x12 modern m", "4x12 modern m 1", "4x12 modern m1"] },
-  { guid: "67f95a0d-34e8-4206-b321-3e57c8d1b407", aliases: ["4x12 modern closed", "4x12 closed modern", "modern closed 4x12"] },
-];
-
-const VERIFIED_SPEAKER_GUIDS = [
-  { guid: "e372dd04b11d49588c290fbe341e97ca", aliases: ["brit 75", "british 75", "g12t 75", "celestion g12t 75", "75"] },
-  { guid: "a56188a9a6bc4373903dbbde779548f1", aliases: ["brit green", "greenback", "greenback g12m", "g12m", "celestion greenback", "celestion g12m"] },
-];
-
-const VERIFIED_MIC_GUIDS = [
-  { guid: "1e41acc4-85af-4e84-bee4-eabc0be5fef1", aliases: ["dynamic 57", "57", "sm57"] },
-  { guid: "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb", aliases: ["condenser 87", "87", "u87"] },
-  { guid: "0f35a776-f6db-403d-930f-6b7f42fed749", aliases: ["condenser 414", "414", "c414"] },
-  { guid: "cf06582b-4b26-42ce-9491-e00e7ab2481e", aliases: ["ribbon 121", "121", "r121"] },
-];
 
 const VERIFIED_RACK_NAMES = [
   "parametric eq",
@@ -105,10 +89,16 @@ const resolveGuid = (
   category: "amp" | "cab" | "stomp" | "rack",
   fallbackGuid: string
 ): string => {
-  return (
-    resolveVerifiedOrManifestRealId(gearName, category) ??
-    findAT5GearGuid(gearName, category, fallbackGuid)
-  );
+  // 1. Try to find an exactly mapped ID (verified or manifest)
+  const resolved = resolveVerifiedOrManifestRealId(gearName, category) ??
+    findAT5GearGuid(gearName, category);
+  
+  if (resolved && resolved !== "null" && resolved !== "undefined") {
+    return resolved;
+  }
+
+  // 2. Fallback to a safe GUID to prevent broken XML, but we will catch this in debug
+  return fallbackGuid;
 };
 
 const isDriveOrGate = (gear: SignalChainElement) => {
@@ -144,7 +134,20 @@ const isPostAmpRack = (gear: SignalChainElement) => {
 
 const isVerifiedRackGear = (gear: SignalChainElement) => {
   const n = gear.name.toLowerCase();
-  return VERIFIED_RACK_NAMES.some((name) => n.includes(name));
+  if (VERIFIED_RACK_NAMES.some((name) => n.includes(name))) return true;
+  
+  // Check if we can resolve a GUID from the catalog for this as a rack item
+  const rackGuid = resolveGuid(gear.name, "rack", AT5_EMPTY_SLOT_GUID);
+  if (rackGuid !== AT5_EMPTY_SLOT_GUID) return true;
+
+  // If it's a pedal being pushed to the rack pool (e.g. a delay pedal), 
+  // check if we have a stomp GUID for it.
+  if (gear.type === "pedal") {
+    const stompGuid = resolveGuid(gear.name, "stomp", AT5_EMPTY_SLOT_GUID);
+    return stompGuid !== AT5_EMPTY_SLOT_GUID;
+  }
+
+  return false;
 };
 
 const emptySlots = (count: number) =>
@@ -255,7 +258,7 @@ const getSettingText = (
       k
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "")
-        .includes(key.toLowerCase().replace(/[^a-z0-9]/g, ""))
+        === key.toLowerCase().replace(/[^a-z0-9]/g, "")
     )
   );
 
@@ -263,7 +266,11 @@ const getSettingText = (
 };
 
 const normaliseLookup = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  value
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
 
 const scoreNames = (query: string, candidates: string[]) => {
   const q = normaliseLookup(query);
@@ -271,38 +278,33 @@ const scoreNames = (query: string, candidates: string[]) => {
 
   return candidates.some((candidate) => {
     const c = normaliseLookup(candidate);
-    return c.includes(q) || q.includes(c);
+    return c === q || (c.length > 3 && q.includes(c)) || (q.length > 3 && c.includes(q));
   })
     ? 1
     : 0;
 };
 
 const getMicId = (name: string) => {
-  const n = name.toLowerCase();
-
-  if (n.includes("121") || n.includes("ribbon")) {
-    return "cf06582b-4b26-42ce-9491-e00e7ab2481e";
-  }
-
-  if (n.includes("414")) {
-    return "0f35a776-f6db-403d-930f-6b7f42fed749";
-  }
-
-  if (n.includes("87") || n.includes("condenser")) {
-    return "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb";
-  }
-
-  return "1e41acc4-85af-4e84-bee4-eabc0be5fef1";
+  if (!name) return DEFAULT_MIC0_GUID;
+  return getVerifiedMics().find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_MIC0_GUID;
 };
 
 const resolveCabGuid = (name?: string) => {
   if (!name) return DEFAULT_CAB_GUID;
-  return VERIFIED_CAB_GUIDS.find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_CAB_GUID;
+  // 1. Try verified protocols first
+  const verified = getVerifiedCabs().find(v => scoreNames(name, v.aliases));
+  if (verified && verified.guid && verified.guid !== "null") return verified.guid;
+  
+  // 2. Fallback to general catalog
+  const catalogItem = findAT5Gear(name, "cab");
+  if (catalogItem && catalogItem.guid && catalogItem.guid !== "null") return catalogItem.guid;
+
+  return DEFAULT_CAB_GUID;
 };
 
 const resolveSpeakerGuid = (name?: string) => {
   if (!name) return DEFAULT_SPEAKER_GUID;
-  return VERIFIED_SPEAKER_GUIDS.find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_SPEAKER_GUID;
+  return getVerifiedSpeakers().find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_SPEAKER_GUID;
 };
 
 const getRoomType = (cab?: SignalChainElement) => {
@@ -351,7 +353,7 @@ const generateXML = (result: ToneResult): string => {
 
   const rackA = [...explicitRacks, ...pedals.filter(isPostAmpRack)]
     .filter(isVerifiedRackGear)
-    .slice(0, 2);
+    .slice(0, 6);
 
   const description = escapeXml(
     result.engineering_notes?.gain_strategy ??
@@ -390,10 +392,10 @@ const generateXML = (result: ToneResult): string => {
     buildCabSection("C"),
 
     buildStudio(),
-    buildRackSection("RackA", rackA, 2),
+    buildRackSection("RackA", rackA.slice(0, 2), 2),
+    buildRackSection("RackB", rackA.slice(2, 4), 2),
+    buildRackSection("RackC", rackA.slice(4, 6), 2),
 
-    `    <RackB Bypass="0" Mute="0" OutputVolume="1" Stomp0="${AT5_EMPTY_SLOT_GUID}" Stomp1="${AT5_EMPTY_SLOT_GUID}">\r\n        <Slot0 />\r\n        <Slot1 />\r\n    </RackB>`,
-    `    <RackC Bypass="0" Mute="0" OutputVolume="1" Stomp0="${AT5_EMPTY_SLOT_GUID}" Stomp1="${AT5_EMPTY_SLOT_GUID}">\r\n        <Slot0 />\r\n        <Slot1 />\r\n    </RackC>`,
     `    <RackDI Bypass="0" Mute="0" OutputVolume="1" Stomp0="${AT5_EMPTY_SLOT_GUID}" Stomp1="${AT5_EMPTY_SLOT_GUID}">\r\n        <Slot0 />\r\n        <Slot1 />\r\n    </RackDI>`,
     `    <RackMaster Bypass="0" Mute="0" OutputVolume="1" ${emptySlotAttrs(6)}>\r\n${emptySlots(6)}\r\n    </RackMaster>`,
 
@@ -411,6 +413,7 @@ export interface ExportDebugItem {
   resolved_guid: string;
   slot_section: string;
   slot_index: number;
+  original_index: number;
   original_settings: Record<string, unknown>;
   normalized_settings: Record<string, unknown>;
   exported_settings: string;
@@ -472,39 +475,71 @@ const makeDebugItem = (
   reason: string
 ): ExportDebugItem => {
   const gear = pair.normalized;
-  const guid =
-    group === "cab"
-      ? resolveCabGuid(gear.name)
-      : resolveGuid(gear.name, group, getFallbackGuidForGroup(group));
+  
+  // Strict Catalogue Lookup
+  const catalogMatch = findAT5Gear(gear.name, group);
+  const guid = group === "cab" 
+    ? resolveCabGuid(gear.name) 
+    : (catalogMatch?.guid || getFallbackGuidForGroup(group));
 
   let attrs = "";
   let finalReason = reason;
+
+  // Validation Logic
+  const isTypeMismatch = gear.type === "rack" && group === "stomp";
+  const isMissingFromCatalog = !catalogMatch;
+  const isMissingGuid = catalogMatch && (!catalogMatch.guid || catalogMatch.guid === "");
+
+  if (isTypeMismatch) {
+    finalReason = `Check: TYPE MISMATCH. Requested "${gear.name}" (RACK) in a ${group.toUpperCase()} slot. Use Rack section instead.`;
+  } else if (isMissingFromCatalog) {
+    finalReason = `Check: "${gear.name}" not found in Gear Catalogue. Added with placeholder GUID.`;
+  } else if (isMissingGuid) {
+    finalReason = `Check: "${gear.name}" found in Catalogue but lacks a verified GUID mapping.`;
+  } else if (exported) {
+    finalReason = "Included"; // This will trigger the "PASS" state in the UI
+  }
 
   if (group === "cab") {
     attrs = buildCabDebugAttrs(gear);
 
     const mic1Req = getSettingText(gear, ["mic_1", "mic 1", "mic1"]);
     const mic2Req = getSettingText(gear, ["mic_2", "mic 2", "mic2"]);
-    const speakerReq = getSettingText(gear, ["speaker", "speaker type", "speaker swap"]);
+    const speakerReq = getSettingText(gear, [
+      "speaker",
+      "speaker type",
+      "speaker swap",
+    ]);
 
-    const isVerifiedCab = VERIFIED_CAB_GUIDS.some((v) =>
-      scoreNames(gear.name, v.aliases)
-    );
-    const isVerifiedSpeaker =
+    const isStockSpeaker =
       !speakerReq ||
-      VERIFIED_SPEAKER_GUIDS.some((v) => scoreNames(speakerReq, v.aliases));
+      ["stock", "original", "default", "none"].includes(
+        speakerReq.toLowerCase().trim()
+      );
+
+    const isVerifiedCab =
+      getVerifiedCabs().some((v) => scoreNames(gear.name, v.aliases)) ||
+      findAT5Gear(gear.name, "cab") !== undefined;
+
+    const isVerifiedSpeaker =
+      isStockSpeaker ||
+      getVerifiedSpeakers().some((v) => scoreNames(speakerReq, v.aliases));
     const isVerifiedMic1 =
       !mic1Req ||
-      VERIFIED_MIC_GUIDS.some((v) => scoreNames(mic1Req, v.aliases));
+      getVerifiedMics().some((v) => scoreNames(mic1Req, v.aliases));
     const isVerifiedMic2 =
       !mic2Req ||
-      VERIFIED_MIC_GUIDS.some((v) => scoreNames(mic2Req, v.aliases));
+      getVerifiedMics().some((v) => scoreNames(mic2Req, v.aliases));
 
     if (isVerifiedCab && isVerifiedSpeaker && isVerifiedMic1 && isVerifiedMic2) {
       finalReason = "Included with verified cab, speaker, and mic GUIDs.";
     } else if (exported) {
-      finalReason =
-        "Included (Caution: Requested speaker/mic name not yet mapped to verified AT5 GUID; exported using safe verified template.)";
+      const issues = [];
+      if (!isVerifiedCab) issues.push("Cab");
+      if (!isVerifiedSpeaker) issues.push("Speaker");
+      if (!isVerifiedMic1) issues.push("Mic 1");
+      if (!isVerifiedMic2) issues.push("Mic 2");
+      finalReason = `Included (Check: Unverified ${issues.join(", ")}. Exported using generic template.)`;
     }
   } else {
     attrs = cleanXmlAttrString(
@@ -523,6 +558,7 @@ const makeDebugItem = (
     resolved_guid: guid,
     slot_section: section,
     slot_index: index,
+    original_index: pair.originalIndex,
     original_settings: pair.raw.settings ?? {},
     normalized_settings: gear.settings ?? {},
     exported_settings: attrs,
@@ -576,16 +612,16 @@ export const getExportDebugData = (
       (p) =>
         !isDriveOrGate(p.normalized) &&
         !isStereoMod(p.normalized) &&
-        !isPostAmpRack(p.normalized)
+        (!isPostAmpRack(p.normalized) || isVerifiedRackGear(p.normalized) === false)
     )
     .slice(0, 6);
 
-  const rackA = [
+  const rackMerged = [
     ...rackPairs,
     ...pedalPairs.filter((p) => isPostAmpRack(p.normalized)),
   ]
     .filter((p) => isVerifiedRackGear(p.normalized))
-    .slice(0, 2);
+    .slice(0, 6);
 
   stompA1.forEach((pair, i) => markExported(pair, "StompA1", i, "stomp"));
   stompStereo.forEach((pair, i) =>
@@ -601,7 +637,9 @@ export const getExportDebugData = (
     markExported(pair, "CabA", 0, "cab")
   );
 
-  rackA.forEach((pair, i) => markExported(pair, "RackA", i, "rack"));
+  rackMerged.slice(0, 2).forEach((pair, i) => markExported(pair, "RackA", i, "rack"));
+  rackMerged.slice(2, 4).forEach((pair, i) => markExported(pair, "RackB", i - 2, "rack"));
+  rackMerged.slice(4, 6).forEach((pair, i) => markExported(pair, "RackC", i - 4, "rack"));
 
   pairs.forEach((pair) => {
     if (exportedPairKeys.has(pairKey(pair))) return;

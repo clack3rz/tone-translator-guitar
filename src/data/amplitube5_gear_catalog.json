@@ -1,10 +1,10 @@
 [
   {
     "group": "amp",
-    "guid": "65cad5a4-58a4-4a57-8186-b4b0e5f2a15c",
+    "guid": "8fe96936-5178-4950-9b80-d89c32534bad",
     "slot": "Amp",
     "display_name": "Brit 8000",
-    "other_observed_names": ["Marshall JCM800", "JCM 800"],
+    "other_observed_names": ["Marshall JCM800", "JCM 800", "Brit 800"],
     "used_in_presets": 1000,
     "paramSuffix": "_JCM800AT4",
     "knobs": [
@@ -52,10 +52,10 @@
   },
   {
     "group": "amp",
-    "guid": "9e8d7c6b-5a43-2109-8f7e-6d5c4b3a2109",
+    "guid": "ac08939a-32bf-496c-96ac-5d6c530abf14",
     "slot": "Amp",
     "display_name": "Jazz Amp 120",
-    "other_observed_names": ["Roland JC-120"],
+    "other_observed_names": ["Roland JC-120", "Jazz Man 120", "Jazz 120"],
     "used_in_presets": 600,
     "knobs": [
       { "name": "Bright", "type": "switch", "default": "Off" },
@@ -192,7 +192,7 @@
   },
   {
     "group": "rack",
-    "guid": "d1e2f3a4-b5c6-4d7e-8f90-a1b2c3d4e5f6",
+    "guid": "063668e9-2af7-4a21-a554-abb1ff51a913",
     "slot": "Rack",
     "display_name": "Digital Reverb",
     "used_in_presets": 1200,

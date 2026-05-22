@@ -246,7 +246,7 @@ export function buildMappedParameterAttrs(
   const defs = getParameterDefinitions(gearNameOrId, category);
 
   const normalisedSettings = new Map(
-    Object.entries(settings).map(([key, value]) => [normalise(key), value])
+    Object.entries(settings || {}).map(([key, value]) => [normalise(key), value])
   );
 
   // Noise Gate Depth safety
@@ -258,7 +258,7 @@ export function buildMappedParameterAttrs(
   }
 
   if (!defs.length) {
-    return Object.entries(settings)
+    return Object.entries(settings || {})
       .map(([key, value]) => `${compact(key)}="${escapeXmlAttr(value)}"`)
       .join(" ");
   }

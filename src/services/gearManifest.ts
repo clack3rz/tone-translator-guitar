@@ -204,12 +204,17 @@ export const AMP_MANIFEST: GearItem[] = [
     id: "amp_jazz_amp_120", 
     category: "amp", 
     name: "Jazz Amp 120",
+    realId: "ac08939a-32bf-496c-96ac-5d6c530abf14",
+    paramSuffix: "_JC120AT4",
     knobs: [
+      { name: "Bright", min: 0, max: 1, unit: "" },
       { name: "Volume", min: 0, max: 10, unit: "" },
       { name: "Treble", min: 0, max: 10, unit: "" },
       { name: "Middle", min: 0, max: 10, unit: "" },
       { name: "Bass", min: 0, max: 10, unit: "" },
-      { name: "Chorus/Vib", min: 0, max: 0, unit: "" } // Selection
+      { name: "Distortion", min: 0, max: 10, unit: "" },
+      { name: "Reverb", min: 0, max: 10, unit: "" },
+      { name: "Vibrato/Chorus", min: 0, max: 2, unit: "" }
     ]
   },
   { id: "amp_jazz_amp_120_cfh", category: "amp", name: "Jazz Amp 120 CFH" },
@@ -737,7 +742,7 @@ export const RACK_MANIFEST: GearItem[] = [
     id: "rack_parametric_eq",
     category: "rack",
     name: "Parametric EQ",
-    realId: "7511f3f3-cac1-476f-a1da-089556f62f58",
+    realId: "f453a992-127e-4050-a92c-63e77f0d067c",
     knobs: [
       { name: "Freq 1", min: 20, max: 20000, unit: "Hz" },
       { name: "Gain 1", min: -15, max: 15, unit: "dB" },

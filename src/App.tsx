@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'motion/react';
 import AT5SignalChainView from "./components/AT5SignalChainView";
 import { AT5GearImportPanel } from './components/AT5GearImportPanel';
+import { CatalogueManager } from './components/CatalogueManager';
 import { 
   Music, 
   Upload, 
@@ -29,7 +30,11 @@ import {
   Gauge,
   Cable,
   Cuboid,
-  X
+  X,
+  LogIn,
+  User,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { translateTone } from './services/geminiService';
 import { ToneResult } from './types';
@@ -40,6 +45,10 @@ import {
   KnobDefinition 
 } from './services/gearManifest';
 import { getGearIdentity } from './services/gearIdentity';
+import { auth, signInWithGoogle } from './services/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { refreshCatalog } from './services/at5Catalog';
+import { refreshProtocols } from './services/at5VerifiedProtocols';
 
 export default function App() {
   const [prompt, setPrompt] = useState('');
@@ -60,10 +69,39 @@ export default function App() {
   const [useValidationRecipes, setUseValidationRecipes] = useState(false);
   const [isChainViewOpen, setIsChainViewOpen] = useState(false);
   const [isAdvancedDebugOpen, setIsAdvancedDebugOpen] = useState(false);
+  const [isGearToolOpen, setIsGearToolOpen] = useState(false);
+  const [gearToolTab, setGearToolTab] = useState<'discovery' | 'catalogue'>('discovery');
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isDbRefreshing, setIsDbRefreshing] = useState(false);
+  const [dbVersion, setDbVersion] = useState(0);
+  const [catalogueSearchOverride, setCatalogueSearchOverride] = useState<string | undefined>(undefined);
+
+  const handleRefreshChain = useCallback(async () => {
+    setIsDbRefreshing(true);
+    await Promise.all([refreshCatalog(), refreshProtocols()]);
+    setDbVersion(prev => prev + 1);
+    setIsDbRefreshing(false);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+
+    // Initial data refresh
+    const initDb = async () => {
+      setIsDbRefreshing(true);
+      await Promise.all([refreshCatalog(), refreshProtocols()]);
+      setIsDbRefreshing(false);
+    };
+    initDb();
+
+    return () => unsubscribe();
+  }, []);
  
   const currentChain = React.useMemo(() => {
     if (!toneResult) return [];
-    return toneResult.signal_chain;
+    return toneResult.signal_chain || [];
   }, [toneResult]);
 
   const exportDebugData = React.useMemo(() => {
@@ -74,7 +112,54 @@ export default function App() {
       console.error("Failed to generate export debug data:", e);
       return null;
     }
-  }, [toneResult, currentChain]);
+  }, [toneResult, currentChain, dbVersion]);
+
+  const handleGearClick = (link: any, index: number) => {
+    setActiveGearId(`${link.name}-${index}`);
+    
+    if (!exportDebugData) return;
+
+    // Match exactly by original index for stable debugging
+    const item = [...(exportDebugData.exported_chain || []), ...(exportDebugData.skipped_gear || [])].find(
+      (d) => d.original_index === index
+    );
+
+    if (item) {
+      const cardId = `at5-chain-card-${item.slot_section}-${item.slot_index}-${item.normalized_name}`;
+      const element = document.getElementById(cardId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Add a temporary highlight class or handling
+        element.classList.add('ring-2', 'ring-gear-accent', 'ring-offset-4', 'ring-offset-black');
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-gear-accent', 'ring-offset-4', 'ring-offset-black');
+        }, 2000);
+      }
+    }
+  };
+
+  const getGearStatus = useCallback((link: any, index: number) => {
+    if (!exportDebugData) return 'normal';
+    
+    // Match by original index for 1:1 parity with the debug chain
+    const item = [...(exportDebugData.exported_chain || []), ...(exportDebugData.skipped_gear || [])].find(
+      (d) => d.original_index === index
+    );
+    
+    if (!item) return 'normal';
+    if (!item.exported) return 'skipped';
+    
+    const isCheck = 
+      item.reason.toLowerCase().includes("check") ||
+      item.reason.toLowerCase().includes("warning") ||
+      item.reason.toLowerCase().includes("caution") ||
+      item.reason.toLowerCase().includes("fallback") ||
+      (item.exported_settings && item.exported_settings.includes("undefined")) ||
+      (item.exported_settings === null && item.type !== "cab");
+      
+    if (isCheck) return 'check';
+    return 'pass';
+  }, [exportDebugData]);
 
   const initiateExport = () => {
     if (!toneResult) return;
@@ -287,6 +372,12 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleJumpToCatalogue = (guid: string) => {
+    setCatalogueSearchOverride(guid);
+    setGearToolTab('catalogue');
+    setIsGearToolOpen(true);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-[#050505] text-white overflow-hidden selection:bg-gear-accent/30 font-sans">
       {/* 1. TOP-TIER: Header & Global Controls */}
@@ -352,9 +443,41 @@ export default function App() {
           <div className="flex items-center gap-4">
             <div className="w-px h-4 bg-white/10" />
           <div className="text-[9px] font-mono text-gray-500 uppercase flex items-center gap-2 pr-2">
-            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-            System Live
+            <div className={`w-1.5 h-1.5 ${isDbRefreshing ? 'bg-amber-500' : 'bg-green-500'} rounded-full animate-pulse`} />
+            {isDbRefreshing ? 'Syncing DB...' : 'Cloud Ready'}
           </div>
+
+          <div className="w-px h-4 bg-white/10 mx-2" />
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsGearToolOpen(!isGearToolOpen)}
+                className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-all text-[10px] font-mono uppercase tracking-tighter ${isGearToolOpen ? 'bg-gear-accent text-black border-gear-accent shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}
+              >
+                <Database className="w-3 h-3" />
+                Discovery
+              </button>
+
+              <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/10 group hover:border-gear-accent/50 transition-colors">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="" className="w-4 h-4 rounded-full border border-white/20" referrerPolicy="no-referrer" />
+              ) : (
+                <User className="w-3 h-3 text-gray-500" />
+              )}
+              <span className="text-[10px] font-mono text-gray-400 group-hover:text-white transition-colors">{user.displayName?.split(' ')[0]}</span>
+              <button onClick={() => auth.signOut()} className="text-[8px] text-gray-600 hover:text-red-400 transition-colors ml-1 uppercase">Out</button>
+            </div>
+          </div>
+          ) : (
+            <button 
+              onClick={signInWithGoogle}
+              className="flex items-center gap-2 px-3 py-1 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 text-[10px] font-mono text-gray-400 hover:text-white transition-all uppercase tracking-tighter"
+            >
+              <LogIn className="w-3 h-3 text-gear-accent" />
+              Sign In
+            </button>
+          )}
         </div>
       </header>
 
@@ -384,6 +507,15 @@ export default function App() {
               Inspect Chain
             </button>
             <button 
+              onClick={handleRefreshChain}
+              disabled={isDbRefreshing}
+              className="group p-1.5 hover:bg-white/10 rounded-md transition-all text-gray-400 hover:text-white border border-transparent hover:border-white/10"
+              title="Refresh Chain (Re-run analysis against updated database)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isDbRefreshing ? 'animate-spin text-gear-accent' : ''}`} />
+            </button>
+
+            <button 
               onClick={initiateExport}
               className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-gear-accent/30 text-gear-accent font-bold text-[9px] hover:bg-gear-accent hover:text-black transition-all uppercase tracking-widest shadow-lg shadow-black/20"
             >
@@ -406,7 +538,23 @@ export default function App() {
           )}
           {currentChain.map((link, i) => {
             const isActive = (activeGearId === `${link.name}-${i}`) || (!activeGearId && i === 0);
+            const status = getGearStatus(link, i);
             
+            // Status colors
+            const statusColorClass = {
+              pass: 'text-green-400',
+              check: 'text-amber-400',
+              skipped: 'text-red-400',
+              normal: 'text-gray-500 hover:text-white'
+            }[status];
+
+            const statusBorderClass = {
+              pass: 'border-green-500/30',
+              check: 'border-amber-500/30',
+              skipped: 'border-red-500/30',
+              normal: 'border-white/10 hover:border-white/40'
+            }[status];
+
             // Meaningful Gear Icons
             const nameL = link.name.toLowerCase();
             let NodeIcon = {
@@ -430,17 +578,17 @@ export default function App() {
                   <span className="text-[8px] font-mono text-gray-600 uppercase tracking-widest">{link.type}</span>
                 </div>
                 <button 
-                  onClick={() => setActiveGearId(`${link.name}-${i}`)}
+                  onClick={() => handleGearClick(link, i)}
                   className={`relative w-[70px] h-[70px] bg-[#111] border rounded-lg flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 ${
                     isActive 
                       ? 'border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] scale-110 z-20 bg-[#1a1a1a]' 
-                      : 'border-white/10 hover:border-white/40'
+                      : statusBorderClass
                   }`}
                 >
                   <div className={`absolute -top-2.5 -left-2.5 w-5 h-5 rounded bg-black border ${isActive ? 'border-gear-accent' : 'border-white/10'} flex items-center justify-center`}>
                     <span className="text-[8px] font-mono text-gray-500">{i + 1}</span>
                   </div>
-                  <NodeIcon className={`w-7 h-7 transition-all ${isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-300'}`} />
+                  <NodeIcon className={`w-7 h-7 transition-all ${isActive ? 'text-white' : statusColorClass}`} />
                 </button>
               </div>
             );
@@ -450,12 +598,80 @@ export default function App() {
 
       <main className="flex-1 flex flex-col min-h-0 overflow-y-auto">
         <div className="p-8">
-          {toneResult ? (
+          {isGearToolOpen ? (
+            <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-6">
+                    <button 
+                      onClick={() => setGearToolTab('discovery')}
+                      className={`text-2xl font-display font-bold tracking-tight transition-all ${gearToolTab === 'discovery' ? 'text-white' : 'text-gray-600 hover:text-gray-400'}`}
+                    >
+                      Gear Discovery
+                    </button>
+                    <div className="w-px h-6 bg-white/10" />
+                    <button 
+                      onClick={() => setGearToolTab('catalogue')}
+                      className={`text-2xl font-display font-bold tracking-tight transition-all ${gearToolTab === 'catalogue' ? 'text-white border-b-2 border-purple-500 pb-1' : 'text-gray-600 hover:text-gray-400'}`}
+                    >
+                      Catalogue
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 uppercase tracking-widest font-mono">
+                    {gearToolTab === 'discovery' ? 'Sync unknown gear directly to the cloud' : 'Search and edit existing verified gear records'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleRefreshChain}
+                    disabled={isDbRefreshing}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-all text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+                  >
+                    {isDbRefreshing ? <Loader2 className="w-4 h-4 animate-spin text-blue-400" /> : <RefreshCw className="w-4 h-4 text-blue-400" />}
+                    Refresh Chain & DB
+                  </button>
+                  <button 
+                    onClick={() => setIsGearToolOpen(false)}
+                    className="p-2 hover:bg-white/10 rounded-full text-gray-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              
+              {gearToolTab === 'discovery' ? (
+                <>
+                  <AT5GearImportPanel onRefreshChain={handleRefreshChain} />
+                  
+                  <div className="p-6 bg-blue-500/5 border border-blue-500/20 rounded-xl flex gap-4">
+                    <Info className="w-5 h-5 text-blue-400 shrink-0" />
+                    <div className="text-xs text-gray-400 space-y-2">
+                      <p className="font-bold text-blue-300">How to update the System:</p>
+                      <ol className="list-decimal list-inside space-y-1">
+                        <li>Upload an <span className="text-white">.at5p</span> preset containing the gear you want to add.</li>
+                        <li>The system will identify <span className="text-blue-400">New Gear</span> or <span className="text-cyan-400">New Protocols</span>.</li>
+                        <li>Click <span className="text-white font-bold">COMMIT</span> on any row to save it to the Cloud Database.</li>
+                        <li>Once committed, the "Brain" will automatically recognize this gear in future tone generations.</li>
+                      </ol>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <CatalogueManager 
+                  onRefresh={handleRefreshChain} 
+                  initialSearch={catalogueSearchOverride} 
+                />
+              )}
+            </div>
+          ) : toneResult ? (
             <div className="max-w-6xl mx-auto space-y-12">
-              {exportDebugData && <AT5SignalChainView debugData={exportDebugData} />}
-
-              <AT5GearImportPanel />
-
+              {exportDebugData && (
+                <AT5SignalChainView 
+                  debugData={exportDebugData} 
+                  onJumpToCatalogue={handleJumpToCatalogue} 
+                />
+              )}
+              
               {/* Engineering Strategy & Quick Debug (Always Visible) */}
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <section>

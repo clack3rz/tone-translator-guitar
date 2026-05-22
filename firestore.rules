@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn(); }
+    function isAdmin() { return isVerified() && request.auth.token.email == 'cclackerz@gmail.com'; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Validation Blueprint for Gear Item
+    function isValidGearItem(data) {
+      return data.keys().hasAll(['group', 'guid', 'displayName', 'updatedAt', 'updatedBy'])
+        && data.group is string && data.group.size() <= 64
+        && data.guid is string && data.guid.size() <= 128
+        && data.displayName is string && data.displayName.size() <= 256
+        && data.updatedAt == request.time
+        && data.updatedBy == request.auth.uid;
+    }
+
+    // Validation Blueprint for Verified Mapping
+    function isValidMapping(data) {
+      return data.keys().hasAll(['guid', 'aliases', 'updatedAt', 'updatedBy'])
+        && data.guid is string && data.guid.size() <= 128
+        && data.aliases is list && data.aliases.size() <= 200
+        && data.updatedAt == request.time
+        && data.updatedBy == request.auth.uid;
+    }
+
+    // --- Main Collections ---
+
+    match /catalogue/{guid} {
+      allow read: if true; // Catalogue is public for the brain
+      allow delete: if isVerified();
+      allow create, update: if (isVerified() && isValidId(guid) && isValidGearItem(incoming())) && (
+        isAdmin() ||
+        request.method == 'create' || (
+          // Allow updates to any valid field, including removing old snake_case fields
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName', 'otherNames', 'knobs', 'updatedAt', 'updatedBy', 
+            'slot', 'paramSuffix', 'usedInPresets', 'examplePresets', 'group', 'guid',
+            'display_name', 'other_observed_names', 'used_in_presets', 'param_suffix' // Legacy fields
+          ])
+          && incoming().guid == existing().guid
+        )
+      );
+    }
+
+    match /verified_cabs/{guid} {
+      allow read: if true;
+      allow delete: if isVerified();
+      allow create, update: if isVerified() && isValidId(guid) && isValidMapping(incoming()) && (
+        isAdmin() ||
+        request.method == 'create' || (
+          incoming().diff(existing()).affectedKeys().hasOnly(['aliases', 'updatedAt', 'updatedBy', 'guid'])
+          && incoming().guid == existing().guid
+        )
+      );
+    }
+
+    match /verified_speakers/{guid} {
+      allow read: if true;
+      allow delete: if isVerified();
+      allow create, update: if isVerified() && isValidId(guid) && isValidMapping(incoming()) && (
+        isAdmin() ||
+        request.method == 'create' || (
+          incoming().diff(existing()).affectedKeys().hasOnly(['aliases', 'updatedAt', 'updatedBy', 'guid'])
+          && incoming().guid == existing().guid
+        )
+      );
+    }
+
+    match /verified_mics/{guid} {
+      allow read: if true;
+      allow delete: if isVerified();
+      allow create, update: if isVerified() && isValidId(guid) && isValidMapping(incoming()) && (
+        isAdmin() ||
+        request.method == 'create' || (
+          incoming().diff(existing()).affectedKeys().hasOnly(['aliases', 'updatedAt', 'updatedBy', 'guid'])
+          && incoming().guid == existing().guid
+        )
+      );
+    }
+
+    // System collection for connection test
+    match /system/connection_test {
+      allow read: if true;
+    }
+  }
+}

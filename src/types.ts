@@ -69,6 +69,7 @@ export interface AT5CatalogItem {
   otherNames?: string[];
   usedInPresets?: number;
   examplePresets?: string[];
-  knobs?: KnobMember[]; // Changed string[] to KnobMember[]
+  knobs?: KnobMember[]; 
   paramSuffix?: string;
+  isDbRecord?: boolean; // New flag
 }

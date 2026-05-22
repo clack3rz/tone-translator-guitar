@@ -1,4 +1,8 @@
 import React, { useMemo } from "react";
+import { getAt5Catalog } from "../services/at5Catalog";
+import { getVerifiedCabs, getVerifiedSpeakers, getVerifiedMics } from "../services/at5VerifiedProtocols";
+
+import { AT5_VERIFIED_GEAR } from "../services/at5VerifiedParameterOverrides";
 
 type ExportDebugItem = {
   original_name: string;
@@ -7,6 +11,7 @@ type ExportDebugItem = {
   resolved_guid: string;
   slot_section: string;
   slot_index: number;
+  original_index: number;
   original_settings: Record<string, unknown>;
   normalized_settings: Record<string, unknown>;
   exported_settings: string;
@@ -23,29 +28,9 @@ type ExportDebugData = {
 
 type Props = {
   debugData: ExportDebugData;
+  onJumpToCatalogue?: (guid: string) => void;
 };
 
-const SECTION_ORDER = [
-  "Input",
-  "StompA1",
-  "StompA2",
-  "StompStereo",
-  "StompB1",
-  "StompB2",
-  "StompB3",
-  "AmpA",
-  "AmpB",
-  "AmpC",
-  "CabA",
-  "Room / Mics",
-  "RackA",
-  "RackB",
-  "RackC",
-  "RackDI",
-  "RackMaster",
-  "Output",
-  "Skipped",
-];
 
 const readablePanelStyle: React.CSSProperties = {
   color: "#f1f5f9",
@@ -84,12 +69,62 @@ const formatValue = (value: unknown) => {
   return String(value);
 };
 
+const normalizeGuid = (guid: any) => {
+  if (typeof guid !== 'string') return String(guid);
+  return guid.toLowerCase().replace(/-/g, '').trim();
+};
+
+const isGuid = (val: any) => {
+  if (typeof val !== 'string') return false;
+  // Standard UUID format: 8-4-4-4-12 hex chars or 32 hex chars
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const hex32Regex = /^[0-9a-f]{32}$/i;
+  return uuidRegex.test(val.trim()) || hex32Regex.test(val.trim());
+};
+
+const resolveGuidName = (guid: any, paramName?: string) => {
+  if (!isGuid(guid)) return String(guid);
+  const normalizedGuid = normalizeGuid(guid);
+
+  const catalog = getAt5Catalog();
+  const known = catalog.find(i => normalizeGuid(i.guid) === normalizedGuid);
+  if (known) return known.displayName;
+  
+  // Also check verified overrides
+  const verified = AT5_VERIFIED_GEAR.find(v => v.realId && normalizeGuid(v.realId) === normalizedGuid);
+  if (verified) return verified.name;
+  
+  // Check protocols - match first alias if found
+  const mic = getVerifiedMics().find(m => normalizeGuid(m.guid) === normalizedGuid);
+  if (mic) return mic.aliases[0] || "Verified Mic";
+
+  const speaker = getVerifiedSpeakers().find(m => normalizeGuid(m.guid) === normalizedGuid);
+  if (speaker) return speaker.aliases[0] || "Verified Speaker";
+
+  const cab = getVerifiedCabs().find(m => normalizeGuid(m.guid) === normalizedGuid);
+  if (cab) return cab.aliases[0] || "Verified Cabinet";
+  
+  const cleanGuid = guid.trim();
+  const short = cleanGuid.includes("-") ? cleanGuid.split("-")[0] : cleanGuid.substring(0, 8);
+  let type = "Gear";
+  const pName = paramName?.toLowerCase() || "";
+  if (pName.includes("speaker")) type = "Speaker";
+  else if (pName.includes("mic")) type = "Mic";
+  else if (pName.includes("cab")) type = "Cab/Model";
+
+  return `Unknown ${type} (${short})`;
+};
+
+const isUnknown = (name: string) => name.toLowerCase().includes("unknown");
+
 const SettingsTable = ({
   title,
   data,
+  onJumpToCatalogue,
 }: {
   title: string;
   data: Record<string, unknown>;
+  onJumpToCatalogue?: (guid: string) => void;
 }) => {
   const entries = Object.entries(data ?? {});
 
@@ -118,82 +153,150 @@ const SettingsTable = ({
         {title}
       </div>
       <div className="space-y-1">
-        {entries.map(([key, value]) => (
-          <div
-            key={key}
-            className="grid grid-cols-[170px_1fr] gap-2 border-b border-white/5 pb-1 text-xs leading-tight last:border-0 last:pb-0"
-          >
+        {entries.map(([key, value]) => {
+          const valStr = String(value ?? "");
+          // Support both 8-4-4-4-12 (36 chars) and hyphenless 32 charshex
+          const isGuidDef = valStr.length >= 30 && (valStr.includes("-") || /^[a-fA-F0-9]{32}$/.test(valStr));
+          const resolvedName = isGuidDef ? resolveGuidName(valStr, key) : null;
+
+          return (
             <div
-              className="font-mono font-semibold"
-              style={{ color: "#94a3b8" }}
+              key={key}
+              className="grid grid-cols-[170px_1fr] gap-2 border-b border-white/5 pb-1 text-xs leading-tight last:border-0 last:pb-0"
             >
-              {key}
+              <div
+                className="font-mono font-semibold"
+                style={{ color: "#94a3b8" }}
+              >
+                {key}
+              </div>
+              <div
+                className="break-all font-mono font-semibold flex flex-col"
+                style={readableValueStyle}
+              >
+                {isGuidDef ? (
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col">
+                      <span className={`font-bold ${resolvedName && isUnknown(resolvedName) ? 'text-amber-400' : 'text-blue-400'}`}>
+                        {resolvedName}
+                      </span>
+                      <span className="text-[10px] opacity-60 text-slate-400">{valStr}</span>
+                    </div>
+                    {onJumpToCatalogue && (
+                      <button
+                        onClick={() => onJumpToCatalogue(valStr)}
+                        className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 hover:text-purple-300 text-[8px] font-mono border border-purple-500/20 hover:bg-purple-500/20 transition-all uppercase tracking-tighter shrink-0"
+                        title={`Manage catalogue entry for ${resolvedName}`}
+                      >
+                        Manage entry
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <span>{formatValue(value)}</span>
+                )}
+              </div>
             </div>
-            <div
-              className="break-all font-mono font-semibold"
-              style={readableValueStyle}
-            >
-              {formatValue(value)}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 };
 
-const GearCard = ({ item }: { item: ExportDebugItem }) => {
+const GearCard = ({ item, onJumpToCatalogue }: { item: ExportDebugItem; onJumpToCatalogue?: (guid: string) => void }) => {
   const exportedAttrs = parseAttrString(item.exported_settings ?? "");
 
-  const hasWarning =
-    !item.exported ||
-    item.reason.toLowerCase().includes("warning") ||
-    item.reason.toLowerCase().includes("caution") ||
-    item.reason.toLowerCase().includes("fallback") ||
-    item.exported_settings.includes("undefined") ||
-    (item.exported && !item.exported_settings && item.type !== "cab");
+  const isCheck = 
+    item.exported && (
+      item.reason.toLowerCase().includes("check") ||
+      item.reason.toLowerCase().includes("warning") ||
+      item.reason.toLowerCase().includes("caution") ||
+      item.reason.toLowerCase().includes("fallback") ||
+      item.exported_settings.includes("undefined") ||
+      (!item.exported_settings && item.type !== "cab")
+    );
+
+  const cardId = `at5-chain-card-${item.slot_section}-${item.slot_index}-${item.normalized_name}`;
+
+  const cardHasUnknown = Object.entries(exportedAttrs).some(([k, v]) => {
+    const val = String(v ?? "");
+    const isGuid = val.length >= 30 && (val.includes("-") || /^[a-fA-F0-9]{32}$/.test(val));
+    if (!isGuid) return false;
+    return isUnknown(resolveGuidName(val, k));
+  }) || (item.resolved_guid && isGuid(item.resolved_guid) && isUnknown(resolveGuidName(item.resolved_guid)));
 
   return (
     <div
-      className="rounded-2xl border border-slate-800 p-4 shadow-xl"
+      id={cardId}
+      className={`rounded-2xl border p-4 shadow-xl transition-all duration-500 target:ring-2 target:ring-gear-accent target:ring-offset-4 target:ring-offset-black scroll-mt-24 ${
+        isCheck || cardHasUnknown ? 'border-amber-950/50' : 'border-slate-800'
+      }`}
       style={readableCardStyle}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="text-lg font-bold" style={readableValueStyle}>
-            {item.normalized_name}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col">
+            <div className="text-lg font-bold" style={readableValueStyle}>
+              {item.normalized_name}
+            </div>
+            <div className="text-sm" style={readableMutedStyle}>
+              Original: {item.original_name}
+            </div>
           </div>
-          <div className="text-sm" style={readableMutedStyle}>
-            Original: {item.original_name}
+
+          <div className="flex flex-wrap gap-2">
+            {!item.exported ? (
+              <span
+                className="rounded-full bg-red-950/40 px-3 py-1 text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "#f87171" }}
+              >
+                Skipped
+              </span>
+            ) : cardHasUnknown ? (
+              <span
+                className="rounded-full bg-amber-950/40 px-3 py-1 text-[10px] font-bold uppercase tracking-widest border border-amber-500/50 animate-pulse"
+                style={{ color: "#fbbf24" }}
+              >
+                Partial / Needs Review
+              </span>
+            ) : isCheck ? (
+              <span
+                className="rounded-full bg-amber-950/40 px-3 py-1 text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "#fbbf24" }}
+              >
+                Restricted / Fallback
+              </span>
+            ) : (
+              <span
+                className="rounded-full bg-green-950/40 px-3 py-1 text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "#4ade80" }}
+              >
+                Pass
+              </span>
+            )}
+
+            {isCheck && !cardHasUnknown && (
+              <span
+                className="rounded-full bg-slate-800/50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest border border-amber-500/30"
+                style={{ color: "#fbbf24" }}
+              >
+                Check
+              </span>
+            )}
+
+            {/* Removed redundant cardHasUnknown badge as it is now the primary status if present */}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 ml-auto">
           <span
-             className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold"
+             className="rounded-full bg-slate-800 px-3 py-1 text-[10px] font-mono tracking-wider font-semibold"
             style={{ color: "#cbd5e1" }}
           >
             {item.slot_section}
             {item.slot_index >= 0 ? ` / Slot ${item.slot_index}` : ""}
           </span>
-
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              item.exported ? "bg-green-950/40" : "bg-red-950/40"
-            }`}
-            style={{ color: item.exported ? "#4ade80" : "#f87171" }}
-          >
-            {item.exported ? "Exported" : "Skipped"}
-          </span>
-
-          {hasWarning && (
-            <span
-              className="rounded-full bg-amber-950/40 px-3 py-1 text-xs font-semibold"
-              style={{ color: "#fbbf24" }}
-            >
-              Check
-            </span>
-          )}
         </div>
       </div>
 
@@ -217,6 +320,14 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
           >
             {item.resolved_guid}
           </span>
+          {onJumpToCatalogue && item.resolved_guid && isGuid(item.resolved_guid) && (
+            <button 
+              onClick={() => onJumpToCatalogue(item.resolved_guid)}
+              className="ml-3 px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[9px] font-mono border border-purple-500/20 hover:bg-purple-500/20 transition-all uppercase tracking-tighter"
+            >
+              Manage entry
+            </button>
+          )}
         </div>
 
         <div>
@@ -228,43 +339,49 @@ const GearCard = ({ item }: { item: ExportDebugItem }) => {
       </div>
 
       <div className="mt-4 grid gap-3">
-        <SettingsTable title="Original settings" data={item.original_settings} />
+        <SettingsTable title="Original settings" data={item.original_settings} onJumpToCatalogue={onJumpToCatalogue} />
         <SettingsTable
           title="Normalised settings"
           data={item.normalized_settings}
+          onJumpToCatalogue={onJumpToCatalogue}
         />
-        <SettingsTable title="Exported XML settings" data={exportedAttrs} />
+        <SettingsTable title="Exported XML settings" data={exportedAttrs} onJumpToCatalogue={onJumpToCatalogue} />
       </div>
     </div>
   );
 };
 
-const buildGroupedChain = (debugData: ExportDebugData) => {
-  const groups: Record<string, ExportDebugItem[]> = {};
 
-  for (const section of SECTION_ORDER) {
-    groups[section] = [];
-  }
+export const AT5SignalChainView: React.FC<Props> = ({ debugData, onJumpToCatalogue }) => {
+  const sortedItems = useMemo(() => {
+    const all = [
+      ...(debugData.exported_chain || []),
+      ...(debugData.skipped_gear || [])
+    ];
+    // Sort by original index to match signal chain path sequence
+    return all.sort((a, b) => a.original_index - b.original_index);
+  }, [debugData]);
 
-  for (const item of debugData.exported_chain ?? []) {
-    const section = item.slot_section || "Other";
-    if (!groups[section]) groups[section] = [];
-    groups[section].push(item);
-  }
+  const stats = useMemo(() => {
+    const exported = debugData.exported_chain || [];
+    const skipped = debugData.skipped_gear || [];
+    
+    const checkItems = exported.filter(item => 
+      item.reason.toLowerCase().includes("check") ||
+      item.reason.toLowerCase().includes("warning") ||
+      item.reason.toLowerCase().includes("caution") ||
+      item.reason.toLowerCase().includes("fallback") ||
+      item.exported_settings.includes("undefined") ||
+      (!item.exported_settings && item.type !== "cab")
+    );
 
-  for (const item of debugData.skipped_gear ?? []) {
-    groups["Skipped"].push(item);
-  }
+    const skippedCount = skipped.length;
+    const checkCount = checkItems.length;
+    const totalCount = exported.length + skippedCount;
+    const passCount = exported.length - checkCount;
 
-  for (const key of Object.keys(groups)) {
-    groups[key].sort((a, b) => a.slot_index - b.slot_index);
-  }
-
-  return groups;
-};
-
-export const AT5SignalChainView: React.FC<Props> = ({ debugData }) => {
-  const grouped = useMemo(() => buildGroupedChain(debugData), [debugData]);
+    return { totalCount, passCount, checkCount, skippedCount };
+  }, [debugData]);
 
   const copyJson = async () => {
     await navigator.clipboard.writeText(JSON.stringify(debugData, null, 2));
@@ -294,14 +411,44 @@ export const AT5SignalChainView: React.FC<Props> = ({ debugData }) => {
       style={readablePanelStyle}
     >
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight" style={readableValueStyle}>
-            AT5 Export Signal Chain
-          </h2>
-          <p className="text-sm mt-1" style={readableMutedStyle}>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold tracking-tight" style={readableValueStyle}>
+              AT5 Export Signal Chain
+            </h2>
+            
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                Total: {stats.totalCount}
+              </span>
+
+              {stats.checkCount === 0 && stats.skippedCount === 0 ? (
+                <span className="rounded-md bg-green-900/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-green-400">
+                  Pass
+                </span>
+              ) : (
+                <>
+                  <span className="rounded-md bg-green-900/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-green-400">
+                    Pass: {stats.passCount}
+                  </span>
+                  {stats.checkCount > 0 && (
+                    <span className="rounded-md bg-amber-900/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-amber-400">
+                      Check: {stats.checkCount}
+                    </span>
+                  )}
+                  {stats.skippedCount > 0 && (
+                    <span className="rounded-md bg-red-900/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-red-400">
+                      Skipped: {stats.skippedCount}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+          <p className="text-sm" style={readableMutedStyle}>
             Visual view of the actual exported AmpliTube chain.
           </p>
-          <p className="mt-2 text-[10px] font-mono uppercase tracking-widest opacity-60" style={readableMutedStyle}>
+          <p className="text-[10px] font-mono uppercase tracking-widest opacity-60" style={readableMutedStyle}>
             {debugData.exported_xml_summary}
           </p>
         </div>
@@ -327,57 +474,26 @@ export const AT5SignalChainView: React.FC<Props> = ({ debugData }) => {
         </div>
       </div>
 
-      <div className="space-y-8">
-        {SECTION_ORDER.map((section) => {
-          const items = grouped[section] ?? [];
-          const showStatic =
-            section === "Input" ||
-            section === "Output" ||
-            section === "Room / Mics";
+      <div className="space-y-6">
+        {sortedItems.map((item, index) => (
+          <GearCard
+            key={`${item.slot_section}-${item.slot_index}-${item.normalized_name}-${index}`}
+            item={item}
+            onJumpToCatalogue={onJumpToCatalogue}
+          />
+        ))}
 
-          if (!items.length && !showStatic) return null;
-
-          return (
-            <div key={section} style={readableValueStyle}>
-              <div className="mb-3 flex items-center gap-3">
-                <div
-                  className="rounded-lg bg-black px-4 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.2em] border border-white/10"
-                  style={{ color: "#ffffff" }}
-                >
-                  {section}
-                </div>
-                {items.length > 0 && (
-                  <div className="text-[10px] font-mono uppercase tracking-widest" style={readableMutedStyle}>
-                    {items.length} item{items.length === 1 ? "" : "s"}
-                  </div>
-                )}
-              </div>
-
-              {showStatic && !items.length ? (
-                <div
-                  className="rounded-2xl border border-dashed border-slate-800 p-6 text-sm italic"
-                  style={readableCardStyle}
-                >
-                  {section === "Input" &&
-                    "Input section is part of the AT5 preset wrapper."}
-                  {section === "Output" &&
-                    "Output section is part of the AT5 preset wrapper."}
-                  {section === "Room / Mics" &&
-                    "Room and mic details are shown inside the CabA card under Exported XML settings."}
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {items.map((item, index) => (
-                    <GearCard
-                      key={`${section}-${item.slot_index}-${item.normalized_name}-${index}`}
-                      item={item}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* Input/Output/Room Info info if not in list */}
+        <div className="pt-8 border-t border-white/5 space-y-4">
+          <div
+            className="rounded-2xl border border-dashed border-slate-800 p-6 text-sm italic"
+            style={readableCardStyle}
+          >
+            <p className="text-gray-500 mb-2 font-mono text-[10px] uppercase tracking-widest">Routing Context</p>
+            Input/Output and Room micro-environments are part of the global AT5 preset wrapper. 
+            Room and mic details are shown within the CabA card under Exported XML settings.
+          </div>
+        </div>
       </div>
     </section>
   );
