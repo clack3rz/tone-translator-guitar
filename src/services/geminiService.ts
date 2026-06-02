@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { ToneResult } from "../types";
+import { ToneResult, SignalChainElement } from "../types";
 import { AMP_MANIFEST, STOMP_MANIFEST, CAB_MANIFEST, ROOM_MANIFEST, RACK_MANIFEST, TONEX_MANIFEST } from "./gearManifest";
 import { getAt5Catalog, findAT5Gear, AT5_EMPTY_SLOT_GUID } from "./at5Catalog";
 
@@ -39,6 +39,12 @@ ENGINEERING PHILOSOPHY (Killer Rig Systematic Tone):
 
 5. CABINET SERIATION: Cabinet settings MUST use standard keys: 'Speaker' (for speaker swap), 'Mic_1' (Primary microphone), 'Mic_2' (Secondary microphone), 'Room' (Room type/ambience).
    - Do NOT use 'speaker_a' or 'speaker_b' for microphones.
+
+6. METAL SHAPING & BOOST PEDAL LOGIC:
+   - For classic 1980’s thrash metal rhythm tones (specifically early Metallica, Kill ’Em All, early thrash metal, tight rhythm metal, aggressive palm muting, sharp pick attack, Marshall-style thrash tones, or NWOBHM influenced metal), prefer "OverScream" as the front-end boosting/tightening pedal instead of "PROdrive" (The RAT).
+   - OverScream works beautifully driving JCM800-style amps (e.g. Brit 8000), because it tightens the low end, boosts upper mids, improves palm mute definition, increases attack clarity, reduces loose/fuzzy distortion, and prevents saturation smear.
+   - When pairing with JCM800-style amps ("Brit 8000", "British Tube Lead 1", "British Tube Lead 2") under any thrash metal context, strongly prefer "OverScream", and reduce the likelihood of "PROdrive" unless the user explicitly requests "RAT", "ProCo RAT", "fuzzy", "gritty", or "raw distortion".
+   - PROdrive should instead be preferred for: fuzzy distortion, raw distortion textures, grunge, garage rock, alternative rock, saturated dirty lead tones, and RAT-style distortion requests.
 
 KNOWLEDGE BASE:
 
@@ -250,10 +256,251 @@ export async function translateTone(
 
   const toneText = response.text || "{}";
   try {
-    const result = JSON.parse(toneText);
-    return result as ToneResult;
+    const result = JSON.parse(toneText) as ToneResult;
+    return adjustThrashPedalSelection(result, textPrompt);
   } catch (error) {
     console.error("AI Response JSON Parsing Failed:", error);
     throw new Error("Failed to parse AI response. Please try again.");
   }
+}
+
+function adjustThrashPedalSelection(result: ToneResult, textPrompt: string): ToneResult {
+  if (!result || !result.signal_chain) return result;
+
+  const lowerPrompt = textPrompt.toLowerCase();
+
+  // Ensure any Noise Gate / Noise Filter / Gate in the signal chain has standard settings (specifically Release)
+  result.signal_chain = result.signal_chain.map(el => {
+    const nameLower = el.name ? el.name.toLowerCase() : "";
+    if (
+      nameLower === "noise gate" ||
+      nameLower === "noise filter" ||
+      nameLower === "gate" ||
+      nameLower === "hard gate" ||
+      nameLower === "noise buster" ||
+      nameLower === "noisebuster" ||
+      nameLower === "noise suppressor" ||
+      nameLower === "noise reducer" ||
+      nameLower === "noise reduction"
+    ) {
+      const settings = el.settings || {};
+      const newSettings: Record<string, any> = {};
+
+      let hasRelease = false;
+      let hasThreshold = false;
+      let hasDepth = false;
+
+      for (const [key, value] of Object.entries(settings)) {
+        const kLower = key.toLowerCase();
+        if (kLower === "release" || kLower === "decay") {
+          newSettings["Release"] = value;
+          hasRelease = true;
+        } else if (kLower === "threshold" || kLower === "gate") {
+          newSettings["Threshold"] = value;
+          hasThreshold = true;
+        } else if (kLower === "depth" || kLower === "reduction") {
+          newSettings["Depth"] = value;
+          hasDepth = true;
+        } else {
+          newSettings[key] = value;
+        }
+      }
+
+      if (!hasThreshold) {
+        newSettings["Threshold"] = "-45 dB";
+      }
+
+      if (!hasRelease) {
+        const isThrashContext = [
+          "metallica",
+          "kill em all",
+          "kill 'em all",
+          "early thrash",
+          "thrash metal",
+          "thrash rhythm",
+          "tight rhythm metal",
+          "tight rhythm",
+          "rhythm metal",
+          "palm muting",
+          "palm mute",
+          "palm mutes",
+          "pick attack",
+          "marshall style thrash",
+          "marshall-style thrash",
+          "nwobhm"
+        ].some(kw => lowerPrompt.includes(kw)) || result.tone_summary?.gain_level === "high";
+
+        newSettings["Release"] = isThrashContext ? "150 ms" : "200 ms";
+      }
+
+      if (!hasDepth) {
+        newSettings["Depth"] = "-60";
+      }
+
+      return {
+        ...el,
+        settings: newSettings
+      };
+    }
+    return el;
+  });
+
+  // 1 & 2. Preferred Tightening Pedal keywords
+  const hasThrashKeywords = [
+    "metallica",
+    "kill em all",
+    "kill 'em all",
+    "early thrash",
+    "thrash metal",
+    "thrash rhythm",
+    "tight rhythm metal",
+    "tight rhythm",
+    "rhythm metal",
+    "palm muting",
+    "palm mute",
+    "palm mutes",
+    "pick attack",
+    "marshall style thrash",
+    "marshall-style thrash",
+    "nwobhm"
+  ].some(kw => lowerPrompt.includes(kw));
+
+  // 4. Amp types selected:
+  const selectsMarshallAmp = result.signal_chain.some(el => {
+    if (el.type !== "amp") return false;
+    const name = el.name.toLowerCase();
+    return (
+      name.includes("brit 800") ||
+      name.includes("brit 8000") ||
+      name.includes("british tube lead") ||
+      name.includes("british lead") ||
+      name.includes("jcm800") ||
+      name.includes("jcm 800")
+    );
+  });
+
+  // Check if user explicitly requests RAT/fuzzy/grunge/alternative style tones
+  const hasExplicitRatOrFuzzKeywords = [
+    "proco rat",
+    "pro co rat",
+    "rat",
+    "prodrive",
+    "fuzzy",
+    "gritty",
+    "grunge",
+    "alternative rock",
+    "garage rock",
+    "raw distortion",
+    "raw distortion texture",
+    "saturated dirty lead",
+    "saturated dirty lead tones"
+  ].some(kw => lowerPrompt.includes(kw));
+
+  // Determine if we should enforce OverScream over PROdrive based on logical constraints
+  const shouldEnforceOverScream = (hasThrashKeywords || selectsMarshallAmp) && !hasExplicitRatOrFuzzKeywords;
+
+  if (shouldEnforceOverScream) {
+    let hasBoostOrDrive = false;
+    
+    result.signal_chain = result.signal_chain.map(el => {
+      if (el.type === "pedal") {
+        const pName = el.name.toLowerCase();
+        // Identify if this pedal is a boost, drive, distortion, fuzz, or specifically PROdrive / The RAT
+        const isDriveOrRat = [
+          "prodrive",
+          "the rat",
+          "distortion",
+          "fuzz",
+          "overdrive",
+          "screamer",
+          "overscream"
+        ].some(x => pName.includes(x)) && !pName.includes("gate") && !pName.includes("wah");
+
+        if (isDriveOrRat) {
+          hasBoostOrDrive = true;
+          // Return OverScream with correct thrash settings
+          return {
+            ...el,
+            name: "OverScream",
+            settings: {
+              "Drive": 1.0,
+              "Tone": 6.8,
+              "Level": 9.0
+            }
+          };
+        }
+      }
+      return el;
+    });
+
+    // If no boost/drive was found but we are in a high-gain thrash context, we should ensure OverScream is at the front
+    if (!hasBoostOrDrive && (hasThrashKeywords || result.tone_summary?.gain_level === "high" || result.tone_summary?.gain_level === "medium-high")) {
+      const overScreamElement: SignalChainElement = {
+        type: "pedal",
+        name: "OverScream",
+        settings: {
+          "Drive": 1.0,
+          "Tone": 6.8,
+          "Level": 9.0
+        }
+      };
+
+      // Insert OverScream before the first amp element
+      const ampIndex = result.signal_chain.findIndex(el => el.type === "amp");
+      if (ampIndex !== -1) {
+        result.signal_chain.splice(ampIndex, 0, overScreamElement);
+      } else {
+        result.signal_chain.push(overScreamElement);
+      }
+    }
+    
+    // Also, update the engineering notes to explain the tight thrash settings of OverScream
+    if (result.engineering_notes) {
+      result.engineering_notes.gain_strategy = "Clean OverScream boost (Drive 1.0, Level 9.0) to aggressively tighten pre-gain low end, driving the amp into focused thrash saturation without muddy smear.";
+      result.engineering_notes.eq_strategy = "Upper-mid boost from OverScream to cut through, maintaining sharp pick attack and tight palm mutes.";
+    }
+    
+    if (result.tone_summary && result.tone_summary.style) {
+      if (hasThrashKeywords && !result.tone_summary.style.toLowerCase().includes("v2")) {
+        result.tone_summary.style = "1980's Metallica Kill 'Em All rhythm v2";
+      }
+    }
+  }
+
+  // 3. PROdrive Usage Logic
+  const prefersProDriveExplicitly = [
+    "fuzz",
+    "fuzzy",
+    "raw distortion",
+    "grunge",
+    "garage rock",
+    "alternative rock",
+    "rat",
+    "proco rat",
+    "pro co rat",
+    "prodrive",
+    "gritty distortion"
+  ].some(kw => lowerPrompt.includes(kw));
+
+  if (prefersProDriveExplicitly) {
+    result.signal_chain = result.signal_chain.map(el => {
+      if (el.type === "pedal") {
+        const pName = el.name.toLowerCase();
+        if (pName.includes("overscream") || pName.includes("screamer") || pName.includes("overdrive")) {
+          return {
+            ...el,
+            name: "PROdrive",
+            settings: {
+              "Distortion": 4.5,
+              "Filter": 6.0,
+              "Volume": 7.0
+            }
+          };
+        }
+      }
+      return el;
+    });
+  }
+
+  return result;
 }

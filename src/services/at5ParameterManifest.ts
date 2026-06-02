@@ -12,6 +12,7 @@ import {
   KnobDefinition,
 } from "./gearManifest";
 import { AT5_VERIFIED_GEAR, VerifiedGearDef, VerifiedParamDef } from "./at5VerifiedParameterOverrides";
+import { getAt5Catalog } from "./at5Catalog";
 
 export interface ResolvedParameter {
   friendlyName: string;
@@ -77,59 +78,209 @@ const scoreTextMatch = (query: string, candidates: string[]) => {
   return score;
 };
 
-export function findVerifiedGear(
+export function findVerifiedGearWithScore(
   gearNameOrId: string | undefined,
   category?: string
-): VerifiedGearDef | undefined {
+): { gear: VerifiedGearDef; score: number } | undefined {
   if (!gearNameOrId) return undefined;
 
-  return AT5_VERIFIED_GEAR
-    .filter((gear) => !category || gear.category === category)
+  const matches = AT5_VERIFIED_GEAR
+    .filter((gear) => !category || gear.category === (category === "pedal" ? "stomp" : category))
     .map((gear) => ({
       gear,
       score: scoreTextMatch(gearNameOrId, [gear.name, gear.realId ?? "", ...(gear.aliases ?? [])]),
     }))
     .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)[0]?.gear;
+    .sort((a, b) => b.score - a.score);
+
+  return matches[0];
+}
+
+export function findManifestGearWithScore(
+  gearNameOrId: string | undefined,
+  category?: string
+): { gear: GearItem; score: number } | undefined {
+  if (!gearNameOrId) return undefined;
+
+  const matches = ALL_GEAR
+    .filter((gear) => !category || gear.category === (category === "pedal" ? "stomp" : category))
+    .map((gear) => ({
+      gear,
+      score: scoreTextMatch(gearNameOrId, [gear.id, gear.name, gear.realId ?? ""]),
+    }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return matches[0];
+}
+
+export function findCatalogGearWithScore(
+  gearNameOrId: string | undefined,
+  category?: string
+): { gear: any; score: number } | undefined {
+  if (!gearNameOrId) return undefined;
+
+  const catalog = getAt5Catalog() || [];
+  const group = category === "pedal" ? "stomp" : category;
+
+  const matches = catalog
+    .filter((item) => !group || item.group === group)
+    .map((item) => {
+      let score = scoreTextMatch(gearNameOrId, [
+        item.displayName,
+        item.guid ?? "",
+        ...(item.otherNames ?? []),
+        ...(item.examplePresets ?? [])
+      ]);
+
+      // Grant a substantial bonus for items with non-empty/real GUIDs to resolve tie-breakers nicely
+      if (score > 0 && item.guid && item.guid.trim() !== "") {
+        score += 500;
+      }
+
+      return { gear: item, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  return matches[0];
+}
+
+export function findVerifiedGear(
+  gearNameOrId: string | undefined,
+  category?: string
+): VerifiedGearDef | undefined {
+  return findVerifiedGearWithScore(gearNameOrId, category)?.gear;
 }
 
 export function findManifestGear(
   gearNameOrId: string | undefined,
   category?: string
 ): GearItem | undefined {
-  if (!gearNameOrId) return undefined;
-
-  return ALL_GEAR
-    .filter((gear) => !category || gear.category === category)
-    .map((gear) => ({
-      gear,
-      score: scoreTextMatch(gearNameOrId, [gear.id, gear.name, gear.realId ?? ""]),
-    }))
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)[0]?.gear;
+  return findManifestGearWithScore(gearNameOrId, category)?.gear;
 }
 
 export function resolveVerifiedOrManifestRealId(
   gearNameOrId: string | undefined,
   category?: string
 ): string | undefined {
-  return (
-    findVerifiedGear(gearNameOrId, category)?.realId ??
-    findManifestGear(gearNameOrId, category)?.realId
-  );
+  const verifiedMatch = findVerifiedGearWithScore(gearNameOrId, category);
+  const manifestMatch = findManifestGearWithScore(gearNameOrId, category);
+  const catalogMatch = findCatalogGearWithScore(gearNameOrId, category);
+
+  const candidates: { realId?: string; score: number; type: "verified" | "manifest" | "catalog" }[] = [];
+
+  if (verifiedMatch) {
+    candidates.push({ realId: verifiedMatch.gear.realId, score: verifiedMatch.score, type: "verified" });
+  }
+  if (manifestMatch) {
+    candidates.push({ realId: manifestMatch.gear.realId, score: manifestMatch.score, type: "manifest" });
+  }
+  if (catalogMatch) {
+    candidates.push({ realId: catalogMatch.gear.guid, score: catalogMatch.score, type: "catalog" });
+  }
+
+  if (candidates.length === 0) return undefined;
+
+  const getScoringTier = (score: number) => {
+    if (score >= 1000) return 3; // EXACT MATCH
+    if (score >= 150) return 2;  // STRONG MATCH
+    return 1;                    // WEAK/TOKEN MATCH
+  };
+
+  candidates.sort((a, b) => {
+    const aTier = getScoringTier(a.score);
+    const bTier = getScoringTier(b.score);
+
+    if (bTier !== aTier) {
+      return bTier - aTier;
+    }
+
+    const aBonus = a.type === "verified" ? 5000 : a.type === "catalog" ? 1000 : 0;
+    const bBonus = b.type === "verified" ? 5000 : b.type === "catalog" ? 1000 : 0;
+    const aScore = a.score + aBonus;
+    const bScore = b.score + bBonus;
+
+    if (bScore !== aScore) {
+      return bScore - aScore;
+    }
+    const aHasId = !!(a.realId && a.realId.trim() !== "");
+    const bHasId = !!(b.realId && b.realId.trim() !== "");
+    if (aHasId !== bHasId) {
+      return bHasId ? 1 : -1;
+    }
+    return 0;
+  });
+
+  return candidates[0].realId;
 }
 
 export function getParameterDefinitions(
   gearNameOrId: string | undefined,
   category?: string
 ): ResolvedParameter[] {
-  const verified = findVerifiedGear(gearNameOrId, category);
-  if (verified) return verified.params;
+  const verifiedMatch = findVerifiedGearWithScore(gearNameOrId, category);
+  const manifestMatch = findManifestGearWithScore(gearNameOrId, category);
+  const catalogMatch = findCatalogGearWithScore(gearNameOrId, category);
 
-  const gear = findManifestGear(gearNameOrId, category);
-  if (!gear?.knobs) return [];
+  const candidates: { type: "verified" | "manifest" | "catalog"; score: number; data: any }[] = [];
 
-  return gear.knobs.filter(isKnobDefinition).map((knob) => {
+  if (verifiedMatch) {
+    candidates.push({ type: "verified", score: verifiedMatch.score, data: verifiedMatch.gear });
+  }
+  if (manifestMatch) {
+    candidates.push({ type: "manifest", score: manifestMatch.score, data: manifestMatch.gear });
+  }
+  if (catalogMatch) {
+    candidates.push({ type: "catalog", score: catalogMatch.score, data: catalogMatch.gear });
+  }
+
+  if (candidates.length === 0) return [];
+
+  const getScoringTier = (score: number) => {
+    if (score >= 1000) return 3; // EXACT MATCH
+    if (score >= 150) return 2;  // STRONG MATCH
+    return 1;                    // WEAK/TOKEN MATCH
+  };
+
+  candidates.sort((a, b) => {
+    const aTier = getScoringTier(a.score);
+    const bTier = getScoringTier(b.score);
+
+    if (bTier !== aTier) {
+      return bTier - aTier;
+    }
+
+    const aBonus = a.type === "verified" ? 5000 : a.type === "catalog" ? 1000 : 0;
+    const bBonus = b.type === "verified" ? 5000 : b.type === "catalog" ? 1000 : 0;
+    return (b.score + bBonus) - (a.score + aBonus);
+  });
+
+  const best = candidates[0];
+
+  if (best.type === "verified") {
+    return best.data.params;
+  }
+
+  if (best.type === "catalog") {
+    const gear = best.data;
+    if (!gear.knobs) return [];
+    return gear.knobs.map((knob: any) => {
+      const baseXmlName = compact(knob.name);
+      return {
+        friendlyName: knob.name,
+        xmlName: gear.group === "amp" && gear.paramSuffix ? `${baseXmlName}${gear.paramSuffix}` : baseXmlName,
+        min: knob.min ?? 0,
+        max: knob.max ?? 10,
+        defaultValue: knob.default !== undefined ? knob.default : undefined,
+      };
+    });
+  }
+
+  const gear = best.data;
+  if (!gear.knobs) return [];
+
+  return gear.knobs.filter(isKnobDefinition).map((knob: any) => {
     const baseXmlName = compact(knob.name);
     return {
       friendlyName: knob.name,

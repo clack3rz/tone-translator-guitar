@@ -82,7 +82,6 @@ const MANUAL_CATALOG_ADDITIONS: AT5CatalogItem[] = [
   { displayName: "AM Modulator", guid: "", group: "rack", slot: "Rack" },
   { displayName: "AutoPan", guid: "", group: "rack", slot: "Rack" },
   { displayName: "EQ 81", guid: "", group: "rack", slot: "Rack" },
-  { displayName: "EQ PG", guid: "", group: "rack", slot: "Rack" },
   { displayName: "Filter C", guid: "", group: "rack", slot: "Rack" },
   { displayName: "Filter M", guid: "", group: "rack", slot: "Rack" },
   { displayName: "Filter O", guid: "", group: "rack", slot: "Rack" },
@@ -121,10 +120,18 @@ export async function refreshCatalog() {
         item.isDbRecord = true;
       }
 
+      const nameKey = `name:${normalise(item.displayName)}:${normalizedGroup}`;
+      const guidKey = item.guid && item.guid.trim() !== "" ? item.guid.toLowerCase() : null;
+
       // Determine the primary key: GUID if present, otherwise group-relative normalized name
-      const key = item.guid && item.guid.trim() !== ""
-        ? item.guid.toLowerCase()
-        : `name:${normalise(item.displayName)}:${normalizedGroup}`;
+      const key = guidKey || nameKey;
+      
+      // If we are adding a database record with a valid GUID, let's see if we have an existing 
+      // name-based record (e.g., from MANUAL_CATALOG_ADDITIONS with guid = "") and remove it, 
+      // so we don't have duplicated or shadowed entries.
+      if (fromDb && guidKey) {
+        mergedMap.delete(nameKey);
+      }
       
       const existing = mergedMap.get(key);
       

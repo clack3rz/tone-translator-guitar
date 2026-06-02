@@ -123,7 +123,6 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "4x12 british tube lead 1": "Cabinet British Tube Lead 1",
   "4x12 brit 800": "4x12 Brit 8000",
   "4x12 brit 8000": "4x12 Brit 8000",
-  "4x12 modern m 1": "4x12 Brit 8000",
   "4x12 british 30": "4x12 Brit 8000",
   "4x12 british 30 v30 speakers": "4x12 Brit 8000",
   "v30 4x12": "4x12 Brit 8000",
@@ -134,6 +133,13 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "graphic equalizer": "10 Band Graphic",
   "10 band graphic": "10 Band Graphic",
   "parametric eq": "Parametric EQ",
+  "eq pg": "EQ PG",
+  "eq-pg": "EQ PG",
+  "pg graphic eq": "EQ PG",
+  "pg graphic": "EQ PG",
+  "pg equalizer": "EQ PG",
+  "eq-pg rack": "EQ PG",
+  "eq pg rack": "EQ PG",
 
   // Compressor aliases
   "digital comp": "Digital Comp",
@@ -155,9 +161,9 @@ const isNumericLike = (value: unknown) =>
 const normaliseTimedValue = (value: unknown): string | number => {
   const raw = String(value).trim().toLowerCase();
 
-  if (raw === "short") return "100 ms";
+  if (raw === "short" || raw === "fast") return "20 ms";
   if (raw === "medium") return "300 ms";
-  if (raw === "long") return "700 ms";
+  if (raw === "long" || raw === "slow") return "700 ms";
 
   return value as string | number;
 };
@@ -348,7 +354,7 @@ const normaliseSettings = (
     return normaliseCabSettings(settings);
   }
 
-  if (n.includes("graphic")) {
+  if (n.includes("graphic") || n === "eq pg") {
     return normaliseGraphicEqSettings(settings);
   }
 

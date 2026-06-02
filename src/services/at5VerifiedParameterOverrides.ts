@@ -104,7 +104,12 @@ export const AT5_VERIFIED_GEAR: VerifiedGearDef[] = [
     name: "OverScream",
     category: "stomp",
     realId: "fa1de2e2-102b-4edf-b3b5-23ceaeddedf0",
-    aliases: ["over scream", "tube screamer", "screamer", "overdrive boost"],
+    aliases: [
+      "overscream", "over scream", "tube screamer", "ts9", "ts-9", "ibanez ts9", "ibanez tube screamer", 
+      "green screamer", "green overdrive", "screamer pedal", "classic overdrive", "mid boost overdrive", 
+      "soft clipping overdrive", "ts808", "ts-808", "ibanez ts808", "vintage tube screamer", "lead boost pedal", 
+      "overdrive boost", "tight overdrive", "tightening pedal"
+    ],
     preferredSection: "StompB1",
     params: [
       { friendlyName: "Drive", xmlName: "Drive", min: 0, max: 10, aliases: ["drive", "gain"] },
@@ -123,6 +128,17 @@ export const AT5_VERIFIED_GEAR: VerifiedGearDef[] = [
     ],
   },
   {
+    name: "Dcomp",
+    category: "stomp",
+    realId: "26c75920-d4bf-4e5e-900f-f78c70e06c17",
+    aliases: ["dcomp", "dyna comp", "dyna-comp", "dynacomp"],
+    preferredSection: "StompB1",
+    params: [
+      { friendlyName: "Sensitivity", xmlName: "Sensitivity", min: 0, max: 10, aliases: ["sensitivity", "comp", "sustain"] },
+      { friendlyName: "Output", xmlName: "Output", min: 0, max: 10, aliases: ["level", "volume", "output"] },
+    ],
+  },
+  {
     name: "Delay",
     category: "stomp",
     realId: "e11b1dc5-1f7d-42ad-af30-0539b3646b3c",
@@ -137,7 +153,7 @@ export const AT5_VERIFIED_GEAR: VerifiedGearDef[] = [
   {
     name: "Parametric EQ",
     category: "rack",
-    realId: "f453a992-127e-4050-a92c-63e77f0d067c",
+    realId: "7511f3f3-cac1-476f-a1da-089556f62f58",
     preferredSection: "RackA",
     params: [
       { friendlyName: "Low Cut", xmlName: "LowCut", min: 20, max: 1000, unit: "Hz", aliases: ["low_cut", "lowcut", "hp_freq", "high_pass", "highpass"], transform: "khzToHzIfNeeded" },
@@ -166,7 +182,7 @@ export const AT5_VERIFIED_GEAR: VerifiedGearDef[] = [
     name: "4x12 Closed 75 C",
     category: "cab",
     realId: "c4ea21cc-6444-4779-9eee-62d4bc085410",
-    aliases: ["4x12 british 30", "v30", "v30 speakers", "4x12 v30", "british 30", "closed 75"],
+    aliases: ["4x12 british 30", "v30", "v30 speakers", "4x12 v30", "british 30", "closed 75", "4x12 closed 75 c", "4x12 closed 75c"],
     preferredSection: "CabA",
     params: [],
   },
@@ -262,6 +278,28 @@ export const AT5_VERIFIED_GEAR: VerifiedGearDef[] = [
       { friendlyName: "Release", xmlName: "Release", min: 50, max: 1400 },
       { friendlyName: "Ratio", xmlName: "Ratio", min: 1.5, max: 4.5 },
       { friendlyName: "Out Level", xmlName: "OutLevel", min: 0.177828, max: 5.62341 },
+    ],
+  },
+  {
+    name: "EQ PG",
+    category: "rack",
+    realId: "ec1212e3-d949-4d91-a1dd-4bb6803f8432",
+    aliases: ["EQ PG", "EQ-PG", "PG Graphic EQ", "PG Graphic EQ Rack", "eq_pg"],
+    preferredSection: "RackA",
+    params: [
+      { friendlyName: "31Hz", xmlName: "Gain31Hz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["31hz", "31 hz"] },
+      { friendlyName: "63Hz", xmlName: "Gain63Hz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["63hz", "63 hz"] },
+      { friendlyName: "125Hz", xmlName: "Gain125Hz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["125hz", "125 hz"] },
+      { friendlyName: "250Hz", xmlName: "Gain250Hz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["250hz", "250 hz"] },
+      { friendlyName: "500Hz", xmlName: "Gain500Hz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["500hz", "500 hz"] },
+      { friendlyName: "1kHz", xmlName: "Gain1kHz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["1khz", "1 khz", "1000hz", "1000 hz"] },
+      { friendlyName: "2kHz", xmlName: "Gain2kHz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["2khz", "2 khz", "2000hz", "2000 hz"] },
+      { friendlyName: "4kHz", xmlName: "Gain4kHz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["4khz", "4 khz", "4000hz", "4000 hz"] },
+      { friendlyName: "8kHz", xmlName: "Gain8kHz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["8khz", "8 khz", "8000hz", "8000 hz"] },
+      { friendlyName: "16kHz", xmlName: "Gain16kHz", min: -12.0, max: 12.0, defaultValue: 0, aliases: ["16khz", "16 khz", "16000hz", "16000 hz"] },
+      { friendlyName: "Gain", xmlName: "Gain", min: -20.0, max: 20.0, defaultValue: 0, aliases: ["gain"] },
+      { friendlyName: "Out", xmlName: "Out", min: -20.0, max: 20.0, defaultValue: 0, aliases: ["out", "level", "volume"] },
+      { friendlyName: "Out Level", xmlName: "OutLevel", min: 0, max: 1, defaultValue: 1 }
     ],
   },
 ];

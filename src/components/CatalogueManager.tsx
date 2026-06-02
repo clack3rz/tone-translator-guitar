@@ -156,6 +156,9 @@ export const CatalogueManager: React.FC<CatalogueManagerProps> = ({ onRefresh, i
         if (existingGear) {
           const combinedAliases = Array.from(new Set([...(existingGear.aliases || []), ...(item.aliases || [])]));
           existingGear.aliases = combinedAliases;
+          if (item.subType) {
+            existingGear.subType = item.subType;
+          }
           if (item.isDbRecord) {
             existingGear.isDbRecord = true;
           }
@@ -254,6 +257,24 @@ export const CatalogueManager: React.FC<CatalogueManagerProps> = ({ onRefresh, i
         await at5DatabaseService.saveGearItem(updatedItem);
         if (guidChanged) {
           await at5DatabaseService.deleteGearItem(originalItem.guid);
+        }
+
+        // Propagate changes to the verified mapping collection (e.g. verified_cabs)
+        const finalSubType = originalItem.subType || (
+          (originalItem.group?.toLowerCase() === 'cab' || originalItem.group?.toLowerCase() === 'cabinet')
+            ? 'cabs'
+            : undefined
+        );
+
+        if (finalSubType) {
+          const updatedMapping = {
+            guid: editForm.guid,
+            aliases: finalAliases
+          };
+          await at5DatabaseService.saveVerifiedMapping(finalSubType, updatedMapping);
+          if (guidChanged) {
+            await at5DatabaseService.deleteVerifiedMapping(finalSubType, originalItem.guid);
+          }
         }
       } else if (originalItem.type === 'protocol' && originalItem.subType) {
         const updatedMapping = {

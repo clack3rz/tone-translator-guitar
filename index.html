@@ -4,6 +4,43 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Google AI Studio App</title>
+    <script>
+      // Intercept and suppress third-party extension errors (e.g. MetaMask/Web3 connection issue in sandboxed cross-origin iframes)
+      (function() {
+        const isMetaMaskError = (msg) => {
+          if (!msg) return false;
+          const s = String(msg).toLowerCase();
+          return s.includes('metamask') || s.includes('ethereum') || s.includes('wallet') || s.includes('extension-context-invalidated');
+        };
+
+        window.addEventListener('error', function(event) {
+          const msg = event.message || (event.error && event.error.message);
+          if (isMetaMaskError(msg)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          const reason = event.reason;
+          const msg = reason ? (reason.message || String(reason)) : '';
+          if (isMetaMaskError(msg)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        // Filter out console.errors for MetaMask sandbox constraints
+        const originalConsoleError = console.error;
+        console.error = function() {
+          const args = Array.from(arguments);
+          const hasMetaMask = args.some(arg => isMetaMaskError(arg));
+          if (!hasMetaMask) {
+            originalConsoleError.apply(console, arguments);
+          }
+        };
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -18,7 +18,7 @@
   },
   {
     "group": "amp",
-    "guid": "8f8b6564-987d-4b8c-a45e-6532d567890a",
+    "guid": "75ad4a0e-5c75-443d-8617-9681c4fe58d3",
     "slot": "Amp",
     "display_name": "Dual Rectifier",
     "other_observed_names": ["Mesa Boogie Dual Rect", "Recto"],
@@ -85,10 +85,15 @@
   },
   {
     "group": "stomp",
-    "guid": "3b2a1c0d-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+    "guid": "fa1de2e2-102b-4edf-b3b5-23ceaeddedf0",
     "slot": "Slot",
-    "display_name": "Overscream",
-    "other_observed_names": ["Overdrive", "Tube Screamer", "TS9"],
+    "display_name": "OverScream",
+    "other_observed_names": [
+      "overscream", "over scream", "tube screamer", "ts9", "ts-9", "ibanez ts9", "ibanez tube screamer", 
+      "green screamer", "green overdrive", "screamer pedal", "classic overdrive", "mid boost overdrive", 
+      "soft clipping overdrive", "ts808", "ts-808", "ibanez ts808", "vintage tube screamer", "lead boost pedal", 
+      "overdrive boost", "tight overdrive", "tightening pedal"
+    ],
     "used_in_presets": 2000,
     "knobs": [
       { "name": "Drive", "type": "range", "min": 0, "max": 10, "default": 2 },

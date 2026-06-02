@@ -3,7 +3,7 @@
 
 import { normaliseSignalChain } from "./at5SignalChainNormalizer";
 import { ToneResult, SignalChainElement } from "../types";
-import { AT5_EMPTY_SLOT_GUID, findAT5GearGuid, findAT5Gear } from "./at5Catalog";
+import { AT5_EMPTY_SLOT_GUID, findAT5GearGuid, findAT5Gear, getAt5Catalog } from "./at5Catalog";
 import {
   buildMappedParameterAttrs,
   resolveVerifiedOrManifestRealId,
@@ -21,8 +21,13 @@ const VERIFIED_RACK_NAMES = [
   "parametric eq",
   "graphic eq",
   "10 band graphic",
+  "eq pg",
+  "eq-pg",
   "black 76",
+  "white 2a",
+  "white-2a",
   "fender compressor",
+  "white 2a (levelling amp)",
   "tube compressor",
 ];
 
@@ -101,28 +106,7 @@ const resolveGuid = (
   return fallbackGuid;
 };
 
-const isDriveOrGate = (gear: SignalChainElement) => {
-  const n = gear.name.toLowerCase();
 
-  return [
-    "gate",
-    "noise",
-    "scream",
-    "overdrive",
-    "distortion",
-    "boost",
-    "drive",
-    "fuzz",
-  ].some((x) => n.includes(x));
-};
-
-const isStereoMod = (gear: SignalChainElement) => {
-  const n = gear.name.toLowerCase();
-
-  return ["chorus", "flanger", "phaser", "stereo", "dimension"].some((x) =>
-    n.includes(x)
-  );
-};
 
 const isPostAmpRack = (gear: SignalChainElement) => {
   const n = gear.name.toLowerCase();
@@ -265,46 +249,189 @@ const getSettingText = (
   return String(found?.[1] ?? "");
 };
 
-const normaliseLookup = (value: string) =>
-  value
+const normalise = (value: string) =>
+  String(value)
     .toLowerCase()
     .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-const scoreNames = (query: string, candidates: string[]) => {
-  const q = normaliseLookup(query);
+const scoreText = (query: string, candidates: string[]): number => {
+  const q = normalise(query);
   if (!q) return 0;
+  
+  let best = 0;
+  for (const rawCandidate of candidates) {
+    const candidate = normalise(rawCandidate);
+    if (!candidate) continue;
 
-  return candidates.some((candidate) => {
-    const c = normaliseLookup(candidate);
-    return c === q || (c.length > 3 && q.includes(c)) || (q.length > 3 && c.includes(q));
-  })
-    ? 1
-    : 0;
+    let score = 0;
+    
+    // 1. Exact match gets massive boost
+    if (candidate === q) {
+      score += 2000;
+    }
+    
+    // 2. Substring matches
+    if (candidate.includes(q)) {
+      score += 400 + (candidate.length - q.length) * -2;
+    } else if (q.includes(candidate)) {
+      score += 200 + (q.length - candidate.length) * -2;
+    }
+
+    // 3. Word token matching with generous word match weighting
+    const qWords = q.split(" ").filter(w => w.length >= 2);
+    const cWords = candidate.split(" ").filter(w => w.length >= 2);
+    let matchedWords = 0;
+    for (const w of qWords) {
+      if (cWords.includes(w)) {
+        matchedWords++;
+      }
+    }
+
+    if (matchedWords > 0) {
+      // Scale by percentage of query words matched to reward specificity
+      const queryCoverage = matchedWords / qWords.length;
+      score += matchedWords * 150 + queryCoverage * 300;
+    }
+
+    if (score > best) {
+      best = score;
+    }
+  }
+
+  return best;
+};
+
+const scoreNames = (query: string, candidates: string[]) => {
+  const score = scoreText(query, candidates);
+  return score >= 150 ? 1 : 0;
+};
+
+const getUnifiedCabCandidates = () => {
+  const map = new Map<string, Set<string>>();
+  
+  // 1. Load verified cabs
+  for (const v of getVerifiedCabs()) {
+    if (!v.guid || v.guid === "null") continue;
+    const key = v.guid.toLowerCase();
+    if (!map.has(key)) map.set(key, new Set<string>());
+    const set = map.get(key)!;
+    v.aliases.forEach(a => { if (a) set.add(a); });
+  }
+
+  // 2. Load general catalog cabs
+  const catalog = getAt5Catalog() || [];
+  for (const item of catalog) {
+    if (item.group !== "cab" || !item.guid || item.guid === "null") continue;
+    const key = item.guid.toLowerCase();
+    if (!map.has(key)) map.set(key, new Set<string>());
+    const set = map.get(key)!;
+    if (item.displayName) set.add(item.displayName);
+    if (item.otherNames) item.otherNames.forEach(o => { if (o) set.add(o); });
+  }
+
+  return Array.from(map.entries()).map(([guid, aliasSet]) => ({
+    guid,
+    aliases: Array.from(aliasSet)
+  }));
+};
+
+const getUnifiedSpeakerCandidates = () => {
+  const map = new Map<string, Set<string>>();
+  
+  // 1. Load verified speakers
+  for (const v of getVerifiedSpeakers()) {
+    if (!v.guid || v.guid === "null") continue;
+    const key = v.guid.toLowerCase();
+    if (!map.has(key)) map.set(key, new Set<string>());
+    const set = map.get(key)!;
+    v.aliases.forEach(a => { if (a) set.add(a); });
+  }
+
+  // 2. Load general catalog speakers
+  const catalog = getAt5Catalog() || [];
+  for (const item of catalog) {
+    if (item.group !== "speaker" || !item.guid || item.guid === "null") continue;
+    const key = item.guid.toLowerCase();
+    if (!map.has(key)) map.set(key, new Set<string>());
+    const set = map.get(key)!;
+    if (item.displayName) set.add(item.displayName);
+    if (item.otherNames) item.otherNames.forEach(o => { if (o) set.add(o); });
+  }
+
+  return Array.from(map.entries()).map(([guid, aliasSet]) => ({
+    guid,
+    aliases: Array.from(aliasSet)
+  }));
+};
+
+const getUnifiedMicCandidates = () => {
+  const map = new Map<string, Set<string>>();
+  
+  // 1. Load verified mics
+  for (const v of getVerifiedMics()) {
+    if (!v.guid || v.guid === "null") continue;
+    const key = v.guid.toLowerCase();
+    if (!map.has(key)) map.set(key, new Set<string>());
+    const set = map.get(key)!;
+    v.aliases.forEach(a => { if (a) set.add(a); });
+  }
+
+  // 2. Load general catalog mics
+  const catalog = getAt5Catalog() || [];
+  for (const item of catalog) {
+    if (item.group !== "mic" || !item.guid || item.guid === "null") continue;
+    const key = item.guid.toLowerCase();
+    if (!map.has(key)) map.set(key, new Set<string>());
+    const set = map.get(key)!;
+    if (item.displayName) set.add(item.displayName);
+    if (item.otherNames) item.otherNames.forEach(o => { if (o) set.add(o); });
+  }
+
+  return Array.from(map.entries()).map(([guid, aliasSet]) => ({
+    guid,
+    aliases: Array.from(aliasSet)
+  }));
 };
 
 const getMicId = (name: string) => {
   if (!name) return DEFAULT_MIC0_GUID;
-  return getVerifiedMics().find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_MIC0_GUID;
+  const scored = getUnifiedMicCandidates()
+    .map(c => ({ guid: c.guid, score: scoreText(name, c.aliases) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.guid ?? DEFAULT_MIC0_GUID;
 };
 
 const resolveCabGuid = (name?: string) => {
   if (!name) return DEFAULT_CAB_GUID;
-  // 1. Try verified protocols first
-  const verified = getVerifiedCabs().find(v => scoreNames(name, v.aliases));
-  if (verified && verified.guid && verified.guid !== "null") return verified.guid;
   
-  // 2. Fallback to general catalog
-  const catalogItem = findAT5Gear(name, "cab");
-  if (catalogItem && catalogItem.guid && catalogItem.guid !== "null") return catalogItem.guid;
-
+  const scored = getUnifiedCabCandidates()
+    .map(c => ({ guid: c.guid, score: scoreText(name, c.aliases) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  
+  if (scored.length > 0 && scored[0].score >= 150) {
+    return scored[0].guid;
+  }
+  
   return DEFAULT_CAB_GUID;
 };
 
 const resolveSpeakerGuid = (name?: string) => {
   if (!name) return DEFAULT_SPEAKER_GUID;
-  return getVerifiedSpeakers().find(v => scoreNames(name, v.aliases))?.guid ?? DEFAULT_SPEAKER_GUID;
+  
+  const scored = getUnifiedSpeakerCandidates()
+    .map(c => ({ guid: c.guid, score: scoreText(name, c.aliases) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+  
+  if (scored.length > 0 && scored[0].score >= 150) {
+    return scored[0].guid;
+  }
+  
+  return DEFAULT_SPEAKER_GUID;
 };
 
 const getRoomType = (cab?: SignalChainElement) => {
@@ -345,11 +472,10 @@ const generateXML = (result: ToneResult): string => {
   const cab = chain.find((g) => g.type === "cab");
   const explicitRacks = chain.filter((g) => g.type === "rack");
 
-  const stompB1 = pedals.filter(isDriveOrGate).slice(0, 6);
-  const stompStereo = pedals.filter(isStereoMod).slice(0, 3);
-  const stompA1 = pedals
-    .filter((g) => !isDriveOrGate(g) && !isStereoMod(g) && !isPostAmpRack(g))
-    .slice(0, 6);
+  const preAmpPedals = pedals.filter((g) => !isPostAmpRack(g));
+  const stompA1 = preAmpPedals.slice(0, 6);
+  const stompB1 = preAmpPedals.slice(6, 12);
+  const stompStereo: SignalChainElement[] = [];
 
   const rackA = [...explicitRacks, ...pedals.filter(isPostAmpRack)]
     .filter(isVerifiedRackGear)
@@ -480,7 +606,7 @@ const makeDebugItem = (
   const catalogMatch = findAT5Gear(gear.name, group);
   const guid = group === "cab" 
     ? resolveCabGuid(gear.name) 
-    : (catalogMatch?.guid || getFallbackGuidForGroup(group));
+    : resolveGuid(gear.name, group, getFallbackGuidForGroup(group));
 
   let attrs = "";
   let finalReason = reason;
@@ -603,18 +729,10 @@ export const getExportDebugData = (
   const cabPairs = pairs.filter((p) => p.normalized.type === "cab");
   const rackPairs = pairs.filter((p) => p.normalized.type === "rack");
 
-  const stompB1 = pedalPairs.filter((p) => isDriveOrGate(p.normalized)).slice(0, 6);
-  const stompStereo = pedalPairs
-    .filter((p) => isStereoMod(p.normalized))
-    .slice(0, 3);
-  const stompA1 = pedalPairs
-    .filter(
-      (p) =>
-        !isDriveOrGate(p.normalized) &&
-        !isStereoMod(p.normalized) &&
-        (!isPostAmpRack(p.normalized) || isVerifiedRackGear(p.normalized) === false)
-    )
-    .slice(0, 6);
+  const preAmpPairs = pedalPairs.filter((p) => !isPostAmpRack(p.normalized));
+  const stompA1 = preAmpPairs.slice(0, 6);
+  const stompB1 = preAmpPairs.slice(6, 12);
+  const stompStereo: ChainPair[] = [];
 
   const rackMerged = [
     ...rackPairs,

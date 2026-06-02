@@ -1,6 +1,7 @@
 // src/services/at5VerifiedProtocols.ts
 
 import { at5DatabaseService } from "./at5DatabaseService";
+import { auth } from "./firebase";
 
 export interface VerifiedMapping {
   guid: string;
@@ -9,10 +10,11 @@ export interface VerifiedMapping {
 }
 
 let VERIFIED_CAB_GUIDS: VerifiedMapping[] = [
-  { guid: "c4ea21cc-6444-4779-9eee-62d4bc085410", aliases: ["4x12 Closed 75 C", "4x12 Closed 75c", "4x12 Modern M", "4x12 Modern M 1", "4x12 Modern m1"] },
+  { guid: "c4ea21cc-6444-4779-9eee-62d4bc085410", aliases: ["4x12 Closed 75 C", "4x12 Closed 75c", "4x12 british 30", "v30", "v30 speakers", "4x12 v30", "british 30", "closed 75", "4x12 closed 75 c", "4x12 closed 75c"] },
   { guid: "67f95a0d-34e8-4206-b321-3e57c8d1b407", aliases: ["4x12 Modern Closed", "4x12 Closed Modern", "Modern Closed 4x12"] },
   { guid: "849b3340-9e28-411f-9faf-e99b7b2bfb36", aliases: ["4x12 Recto Traditional Slant", "4x12 Recto Traditional", "4x12 Recto", "Mesa Recto 4x12", "4x12 Mesa Recto Traditional", "4x12 Mesa Recto Traditional Slant", "Recto Traditional"] },
   { guid: "fb5fc82f-a926-4591-87d2-168906fd79d3", aliases: ["4x12 British Lead S100", "British Lead S100", "British Tube Lead 1", "British Lead S", "British Lead S (JCM800)", "British Lead S100 (JCM800)", "4x12 British Tube Lead 1"] },
+  { guid: "f7902634-12e9-4a2d-9f9a-bcd22781cdab", aliases: ["2x12 Jazz", "2x12 Jazz Amp", "Jazz 2x12", "Jazz Cabinet 2x12"] },
 ];
 
 let VERIFIED_SPEAKER_GUIDS: VerifiedMapping[] = [
@@ -29,7 +31,7 @@ let VERIFIED_MIC_GUIDS: VerifiedMapping[] = [
   { guid: "1e41acc4-85af-4e84-bee4-eabc0be5fef1", aliases: ["Dynamic 57", "SM57", "57", "Dynamic 57 (On)", "Dynamic 57 (Off)"] },
   { guid: "9e444286-cab4-46a4-bfa3-a6d55b3ffcfb", aliases: ["Condenser 87", "U87", "87", "Condenser 87 (On)", "Condenser 87 (Off)"] },
   { guid: "0f35a776-f6db-403d-930f-6b7f42fed749", aliases: ["Condenser 414", "C414", "414", "Condenser 414 (On)", "Condenser 414 (Off)"] },
-  { guid: "cf140788-b4b1-4099-ae34-a1306b83f06b", aliases: ["MD 421", "421", "Sennheiser 421", "Dynamic 421", "MD421"] },
+  { guid: "b216abec-6fae-4fcd-95fd-c89aacf60ee2", aliases: ["dynamic 421", "MD 421", "421", "Sennheiser 421", "Dynamic 421", "MD421"] },
   { guid: "cf06582b-4b26-42ce-9491-e00e7ab2481e", aliases: ["Ribbon 121", "R121", "121"] },
 ];
 
@@ -50,6 +52,15 @@ const merge = (local: VerifiedMapping[], remote: VerifiedMapping[]) => {
   // Merge remote overriding mappings securely
   remote.forEach(m => {
     if (!m.guid) return;
+    
+    // Auto-clean bad modern aliases from the 4x12 Closed 75 C cabinet GUID on the fly:
+    if (m.guid.toLowerCase() === "c4ea21cc-6444-4779-9eee-62d4bc085410" && m.aliases) {
+      m.aliases = m.aliases.filter(alias => {
+        const lower = alias.toLowerCase();
+        return !lower.includes("modern");
+      });
+    }
+
     const key = m.guid.toLowerCase().replace(/-/g, '').trim();
     const existing = map.get(key);
 
@@ -95,6 +106,22 @@ export async function refreshProtocols() {
     const dbCabs = await at5DatabaseService.getVerifiedMappings('cabs');
     const dbSpeakers = await at5DatabaseService.getVerifiedMappings('speakers');
     const dbMics = await at5DatabaseService.getVerifiedMappings('mics');
+
+    // Filter and sanitize any stale database documents during refresh:
+    dbCabs.forEach(c => {
+      if (c.guid.toLowerCase() === "c4ea21cc-6444-4779-9eee-62d4bc085410" && c.aliases) {
+        const cleaned = c.aliases.filter(alias => !alias.toLowerCase().includes("modern"));
+        if (cleaned.length !== c.aliases.length) {
+          c.aliases = cleaned;
+          // If signed in, automatically save the cleaned list to self-heal the database!
+          if (auth.currentUser) {
+            at5DatabaseService.saveVerifiedMapping('cabs', c).catch(err => {
+              console.error("Auto self-heal failed:", err);
+            });
+          }
+        }
+      }
+    });
 
     if (dbCabs.length > 0) {
       const merged = merge(VERIFIED_CAB_GUIDS, dbCabs);

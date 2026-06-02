@@ -163,6 +163,7 @@ export const AMP_MANIFEST: GearItem[] = [
     id: "amp_dual_rectifier", 
     category: "amp", 
     name: "MESA Dual Rectifier",
+    realId: "75ad4a0e-5c75-443d-8617-9681c4fe58d3",
     knobs: [
       { name: "Presence", min: 0, max: 10, unit: "" },
       { name: "Bass", min: 0, max: 10, unit: "" },
@@ -401,7 +402,16 @@ export const STOMP_MANIFEST: GearItem[] = [
   { id: "stomp_compressor", category: "stomp", name: "Compressor" },
   { id: "stomp_contour_wah", category: "stomp", name: "Contour Wah" },
   { id: "stomp_crusher", category: "stomp", name: "Crusher" },
-  { id: "stomp_dcomp", category: "stomp", name: "Dcomp" },
+  { 
+    id: "stomp_dcomp", 
+    category: "stomp", 
+    name: "Dcomp",
+    realId: "26c75920-d4bf-4e5e-900f-f78c70e06c17",
+    knobs: [
+      { name: "Sensitivity", min: 0, max: 10, unit: "" },
+      { name: "Output", min: 0, max: 10, unit: "" }
+    ]
+  },
   { id: "stomp_delay", category: "stomp", name: "Delay" },
   { 
     id: "stomp_dime_noise_gate", 
@@ -683,6 +693,7 @@ export const RACK_MANIFEST: GearItem[] = [
     id: "rack_white_2a",
     category: "rack",
     name: "White 2A (Levelling Amp)",
+    realId: "719106ad-5c84-4f94-a9db-eb3264281314",
     knobs: [
       { name: "Gain", min: 0, max: 100, unit: "" },
       { name: "Peak Reduction", min: 0, max: 100, unit: "" }
@@ -705,7 +716,6 @@ export const RACK_MANIFEST: GearItem[] = [
     id: "rack_vintage_eq_1a",
     category: "rack",
     name: "Vintage EQ-1A (Tube EQ)",
-    realId: "7511f3f3-cac1-476f-a1da-089556f62f58",
     knobs: [
       { name: "Low Freq", min: 20, max: 100, unit: "Hz" },
       { name: "Low Boost", min: 0, max: 10, unit: "" },
@@ -742,7 +752,7 @@ export const RACK_MANIFEST: GearItem[] = [
     id: "rack_parametric_eq",
     category: "rack",
     name: "Parametric EQ",
-    realId: "f453a992-127e-4050-a92c-63e77f0d067c",
+    realId: "7511f3f3-cac1-476f-a1da-089556f62f58",
     knobs: [
       { name: "Freq 1", min: 20, max: 20000, unit: "Hz" },
       { name: "Gain 1", min: -15, max: 15, unit: "dB" },
@@ -750,6 +760,26 @@ export const RACK_MANIFEST: GearItem[] = [
       { name: "Freq 2", min: 20, max: 20000, unit: "Hz" },
       { name: "Gain 2", min: -15, max: 15, unit: "dB" },
       { name: "Q 2", min: 0.1, max: 10, unit: "" }
+    ]
+  },
+  {
+    id: "rack_eq_pg",
+    category: "rack",
+    name: "EQ PG",
+    realId: "ec1212e3-d949-4d91-a1dd-4bb6803f8432",
+    knobs: [
+      { name: "31Hz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "63Hz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "125Hz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "250Hz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "500Hz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "1kHz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "2kHz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "4kHz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "8kHz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "16kHz", min: -12.0, max: 12.0, unit: "dB" },
+      { name: "Gain", min: -20.0, max: 20.0, unit: "dB" },
+      { name: "Out", min: -20.0, max: 20.0, unit: "dB" }
     ]
   }
 ];
