@@ -2,6 +2,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ToneResult, SignalChainElement } from "../types";
 import { AMP_MANIFEST, STOMP_MANIFEST, CAB_MANIFEST, ROOM_MANIFEST, RACK_MANIFEST, TONEX_MANIFEST } from "./gearManifest";
 import { getAt5Catalog, findAT5Gear, AT5_EMPTY_SLOT_GUID } from "./at5Catalog";
+import { AT5_AMPLIFIER_KNOWLEDGE } from "./at5AmplifierKnowledge";
+import { AT5_CABINET_SPEAKER_KNOWLEDGE } from "./at5CabinetKnowledge";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -46,6 +48,19 @@ ENGINEERING PHILOSOPHY (Killer Rig Systematic Tone):
    - When pairing with JCM800-style amps ("Brit 8000", "British Tube Lead 1", "British Tube Lead 2") under any thrash metal context, strongly prefer "OverScream", and reduce the likelihood of "PROdrive" unless the user explicitly requests "RAT", "ProCo RAT", "fuzzy", "gritty", or "raw distortion".
    - PROdrive should instead be preferred for: fuzzy distortion, raw distortion textures, grunge, garage rock, alternative rock, saturated dirty lead tones, and RAT-style distortion requests.
 
+7. CLASSIC BRITISH CRUNCH / AC/DC / MALCOLM YOUNG TONE LOGIC:
+   - For early AC/DC, Malcolm Young rhythm tone, or 1970s British classic rock rhythm requests (including AC/DC, ACDC, Malcolm Young, Malcom Young, Angus Young, Jailbreak, High Voltage, Let There Be Rock, Powerage, Highway to Hell), TT should strongly prefer the AC/DC classic rock profile unless the user explicitly requests a different interpretation.
+   - Note: "Malcom" is a common misspelling of "Malcolm". Treat "Malcom Young" and "Malcolm Young" as the same artist/player reference.
+   - The word "Jailbreak" must not be interpreted as modern rock, metal, or lead guitar.
+   - The artist reference "Malcolm Young" must strongly imply AC/DC rhythm guitar, dry vintage Marshall-style crunch, low-to-medium gain, and minimal processing.
+   - AMP SELECTION: Prefer vintage Marshall/Plexi/Super Lead/JMP/JTM-style amplifiers (specifically "British Lead S100" as the primary choice; or "British Tube Lead 1" or "Brit 8000" only if used with low gain and treated as a vintage British crunch platform).
+   - PENALISE AND REJECT: Strictly avoid and penalise "Vintage Metal Lead", "Metal Lead V", "Modern Tube Lead", "Red Pig", "Marshall Major", "Rectifier-style", "ENGL-style", "Dimebag-style", or any high-gain/metal/lead-focused amps unless the user explicitly asks for one. Do not choose an amp based only on keyword overlap. "Lead" in an amp name does not mean it fits a rhythm guitar tone; "Metal" in an amp name does not mean it fits AC/DC. AC/DC is classic rock, not metal.
+   - GAIN STRATEGY: Rely on natural power-amp crunch and pick dynamics. Keep amp Gain/Preamp level low-to-moderate (target 3.5 to 5.5). Midrange should be forward (6.0 to 8.0), bass controlled (4.0 to 5.0) to prevent muddiness, and treble/presence clear but not fizzy.
+   - EFFECTS EXCLUSION: STRICTLY AVOID unrequested rack EQs, delays, reverbs, modulations, compressors, or overdrive boosts. The signal path must remain pure, raw, and bone-dry.
+   - CAB & SPEAKER SYSTEM: Strongly prefer closed-back British 4x12 cabinets (specifically "4x12 Brit 8000" or nearest vintage British 4x12) paired with Greenback-style speakers (specifically "Brit Green") for natural vintage compression and organic midrange warmth. Avoid modern metal cabs or Vintage 30 cabinets.
+   - MICROPHONE CALIBRATION: Start with "Dynamic 57" as the primary close microphone placed close to the cone edge/midway for attack and core midrange projection. If a second microphone is used, prefer "Ribbon 121" or "Dynamic 421" for warmth and body. STRICTLY AVOID "Condenser 87" as a default second mic under raw vintage AC/DC contexts. Keep the cabinet room dial and ambience mix low/controlled. Room Type must be "Small Studio".
+   - REASONING & DEBUG/ENGINEERING NOTE: Malcolm Young's Jailbreak rhythm tone is treated as a dry 1970s AC/DC rhythm sound: vintage Marshall-style crunch, low-to-medium gain, strong mids, Greenback-style speaker compression, and minimal processing. Clearly explain these choices in the notes.
+
 KNOWLEDGE BASE:
 
 1. TONE DESCRIPTORS:
@@ -68,6 +83,83 @@ KNOWLEDGE BASE:
 - AMBIENT/SHOEGAZE: Reverb -> Overdrive (for saturated wash) or Dual-Parallel Delays.
 - CLASSIC ROCK: Wah -> SD-1 or BD-2 -> Brit 8000 (Mid Master Vol).
 - COUNTRY/FUNK: Fast Attack Compressor (Squash) + Clean American Amp + Slapback Delay.
+
+AMPLIFIER SELECTION, RANKING, AND CONFIGURATION RULE BOOK:
+1. Candidate Scoring and Ranking:
+   - Match requests by genre, artist, era, tone descriptors, gain structure, and real-world references.
+   - Use tags, real gear names, and categories from the Amplifier Directory below to find and score candidates.
+   - Always rank the leading candidate amps in your reasoning and explain why the selected amp was chosen over others.
+2. Control-Aware Settings Generation:
+   - ONLY generate parameter settings that exist in the selected amplifier's controls layout, as specified in the Amplifier Directory below. Do NOT invent parameter names.
+   - Start with the Typical Settings specified for that amp as your baseline, and adjust them to fit the exact tone request, staying strictly within the min and max bounds for each parameter.
+   - If optional controls (e.g. Bright switches, mode toggles, boost switches, individual channel gains) are listed in the controls layout and relevant, specify them appropriately.
+3. Matching Exact Target Names:
+   - The "name" parameter in the "signal_chain" array for type: "amp" MUST exactly match the "name" of the selected amplifier from the Directory below.
+
+CABINET & SPEAKER SELECTION AND CALIBRATION RULE BOOK:
+1. Systematic Cabinet Selection Steps:
+   - Step 1: Identify style/genre first.
+   - Step 2: Determine required low-end behavior (loose vs. tight, deep vs. focused, high headroom vs. vintage compression).
+   - Step 3: Select Cabinet Construction (Open-back for airiness/depth; Closed-back for tightness/focused aggression; Semi-open/Sealed for transparent balance).
+   - Step 4: Select Cabinet Sizing (1x12 compact/focused; 2x12 balanced/versatile; 4x12 maximum projection/deep low-end focus).
+   - Step 5: Select Speaker Family (Vintage 30, Greenback, G12T-75, Jensen, EV) based on the target tone's required focus, midrange cut, and power characteristics.
+   - Step 6: Map to specific AmpliTube 5 hardware models and configurations in the Cabinet Directory.
+2. Construction & Cabinet Size Logic:
+   - For Clean, Country, Blues, and edge-of-breakup: Prefer open-back combos ("2x12 '65 Twin Reverb", "1x12 '65 Deluxe Reverb", "4x10 '59 Bassman") with Jensen style speakers ("American 12C", "American 12K").
+   - For Hard Rock, Heavy Metal, Thrash, and Modern High-Gain: Closed-back 4x12 is the strict default ("4x12 Recto Traditional Slant", "4x12 Brit 8000", "4x12 Closed 75 C") paired with Vintage 30 ("Brit V1", "Brit V2") or EV style ("EV Darkness") or Classic Greenbacks ("Brit Green").
+3. Cabinet ↔ Speaker Coupling Logic:
+   - Choose speakers logically based on construction interaction:
+     * Open Back + Jensen = spacious, sparkly American Clean.
+     * Closed Back + Vintage 30 = focused, punchy rock/metal with aggressive upper-mid cut.
+     * Closed Back + EV = ultra-tight, massive high-power neutral gain.
+     * Closed Back + Greenback = organic, mid-rich vintage British crunch.
+4. Explaining Choices in Debug:
+   - Always document your systematic reasoning (style, low-end requirements, cabinet construction, cabinet size, speaker family, compatibility) in the amplifier_debug feedback block.
+
+SYSTEMATIC MICROPHONE SELECTION, ROLE-BASED BLENDING, AND PLACEMENT RULE BOOK:
+1. Required Systematic Tone-Design Reasoning Order:
+   - Step 1: Identify tone goal.
+   - Step 2: Select amplifier family.
+   - Step 3: Select specific AT5 amplifier.
+   - Step 4: Select cabinet type.
+   - Step 5: Select speaker family.
+   - Step 6: Select microphone role (primary attack mic, body mic, warmth mic, fizz-control mic, detail mic, room/space mic, bass low-end mic).
+   - Step 7: Select specific microphone models.
+   - Step 8: Select placement strategy (on-axis, cap-edge, off-axis, distance).
+   - Step 9: Select room level strategy.
+   - Step 10: Explain why the microphone choices suit the tone inside the engineering notes and amplifier_debug feedback window.
+
+2. Explicit Microphone Role Assignations:
+   - Dynamic 57: Primary close microphone for "attack and presence", giving bite and midrange cut.
+   - Ribbon 121: Close or blended microphone for "warmth and fizz control", smoothing high-gain harshness.
+   - Condenser 87: Open-sounding microphone for "clean detail and polish" with elegant high-fidelity balance.
+   - Dynamic 421: Focused close microphone for "punch and body", thickening midrange.
+   - Dynamic 20 / Vintage Dynamic 20 / Condenser 170 / Ribbon 160: Primary choices for "bass low-end / fullness" and retro weight on bass combo/cabinet captures.
+
+3. Context & Style-Based Calibration Logic:
+   - High-Gain & Distorted Tones (Hard Rock, Heavy Metal, Thrash, Modern High-Gain):
+     * Do NOT default to bright on-axis placement for every metal tone because that creates harshness and fizz.
+     * Prefer close dynamic microphones (e.g. Dynamic 57) as a primary starting point to capture aggressive attack.
+     * Blend in or switch to Ribbon 121 when fizz or high-frequency harshness needs smoothing.
+     * Utilize Dynamic 421 when more body and lower-mid punch is requested.
+     * Keep room contribution and ambience level tightly controlled, unless a live room or ambient metal vibe is explicitly defined.
+     * Prefer cap-edge placement as a balanced starting point.
+   - Clean & Acoustic-Style Tones (Acoustic, Jazz, Clean, Country, Ambient):
+     * Consider Condenser microphones (like Condenser 87, Condenser 414, or Condenser 170) more frequently for natural detail, openness, and polished studio sparkle.
+     * Allow more room/distance contribution for spatial depth and air.
+     * Avoid aggressive close-mic-only configurations unless the target tone demands extreme direct attack.
+   - Bass Cabinets & Tones:
+     * Never blindly copy default guitar cabinet microphone selections.
+     * Prioritize low-end fullness, smooth highs, and controlled midrange using low-end-friendly microphones (like Dynamic 20, Vintage Dynamic 20, Condenser 170, or Ribbon 160).
+
+4. Explanation & Note Writing Standards:
+   - Always clearly explain your microphone choices under engineering_notes. Explain what roles each selected microphone plays (e.g. as a primary attack mic, body mic, warmth mic, etc.) and why they fit the style. Avoid empty comments like "Used Dynamic 57 because it is common" — explain its acoustic role in detail.
+
+AMPLIFIER DIRECTORY:
+{amplifier_directory}
+
+CABINET & SPEAKER DIRECTORY:
+{cabinet_speaker_directory}
 
 TASK:
 Analyze the input and produce a professional AmpliTube 5 signal chain.
@@ -94,7 +186,8 @@ OUTPUT SCHEMA:
   "engineering_notes": {
     "gain_strategy": "Detailed explanation of gain stages and saturation methodology",
     "noise_control": "How noise and transients are managed",
-    "eq_strategy": "Detailed breakdown of the frequency shaping logic"
+    "eq_strategy": "Detailed breakdown of the frequency shaping logic",
+    "amplifier_debug": "selected TT Gear Name: <exact matching amp name>\nmatched aliases/tags: <comma-separated matched aliases & tags>\ntone reason: <rank candidate amps and explain why the chosen one won>\navailable controls used: <exact knobs and values set>\nany controls requested but unavailable: <any requested knobs or features that do not exist on the selected amp, or 'None'>\n\nselected Cab Name: <exact matching cab name>\nselected Speaker Name: <exact matching speaker name>\ncab, speaker & microphone reason: <explain logic behind cabinet construction, size, speaker choice, microphone roles, matching placement, and how they relate systematically to the style and amp>"
   },
   "confidence": 0-100
 }
@@ -109,7 +202,24 @@ export async function translateTone(
   youtubeUrl?: string,
   useValidationRecipes: boolean = false
 ): Promise<ToneResult> {
-  const fullPrompt = MASTER_PROMPT.replace('{user_input}', textPrompt);
+  const ampContext = AT5_AMPLIFIER_KNOWLEDGE.map(amp => {
+    const controlsStr = amp.controls.map(c => `- ${c.name} (range: ${c.min} to ${c.max}${c.description ? ` - ${c.description}` : ""})`).join("\n");
+    const settingsStr = Object.entries(amp.typicalSettings).map(([k, v]) => `${k}: ${v}`).join(", ");
+    return `### ${amp.name}
+- Real Gear: ${amp.realGear}
+- Category: ${amp.category}
+- Typical Settings: { ${settingsStr} }
+- Tags: ${amp.tags.join(", ")}
+- Available Controls:
+${controlsStr}
+- Tone Strategy/Default Usage: ${amp.defaultUsage}
+`;
+  }).join("\n-------------------\n");
+
+  const fullPrompt = MASTER_PROMPT
+    .replace('{user_input}', textPrompt)
+    .replace('{amplifier_directory}', ampContext)
+    .replace('{cabinet_speaker_directory}', AT5_CABINET_SPEAKER_KNOWLEDGE);
   const parts: any[] = [{ text: fullPrompt }];
 
   if (youtubeUrl) {
@@ -122,6 +232,53 @@ export async function translateTone(
 
   // Task 6 — Deterministic Kill 'Em All validation recipe
   const lowerPrompt = textPrompt.toLowerCase();
+  
+  const isAcdcKeyword = [
+    "ac/dc", "acdc", "malcolm young", "malcom young", "angus young", "jailbreak", "high voltage", "let there be rock", "powerage", "highway to hell"
+  ].some(kw => lowerPrompt.includes(kw));
+
+  if (useValidationRecipes && isAcdcKeyword) {
+    return {
+      tone_summary: {
+        style: "classic rock",
+        gain_level: "medium",
+        noise_level: "low"
+      },
+      signal_chain: [
+        {
+          type: "amp",
+          name: "British Lead S100",
+          settings: {
+            "Gain": 4.0,
+            "Bass": 4.5,
+            "Middle": 7.5,
+            "Treble": 5.5,
+            "Presence": 5.0,
+            "Reverb": 0.0,
+            "Volume": 7.5
+          }
+        },
+        {
+          type: "cab",
+          name: "4x12 Brit 8000",
+          settings: {
+            "Speaker": "Brit Green",
+            "Mic_1": "Dynamic 57",
+            "Mic_2": "Ribbon 121",
+            "Room": "Small Studio"
+          }
+        }
+      ],
+      engineering_notes: {
+        gain_strategy: "Malcolm Young's Jailbreak rhythm tone is treated as a dry 1970s AC/DC rhythm sound: vintage Marshall-style crunch, low-to-medium gain, strong mids, Greenback-style speaker compression, and minimal processing.",
+        noise_control: "No noise gate or compression is needed. The raw, open dynamics of the guitar humbuckers directly driving the input stage of the Super Lead 100 provides organic, clear note-separation.",
+        eq_strategy: "Amplifier EQ has scooped bass to keep low-end tight and clear mid-frequencies pushed to maximize crunch and projection. Cabinet features Greenback speakers for midrange emphasis.",
+        amplifier_debug: "selected TT Gear Name: British Lead S100\nmatched aliases/tags: classic rock, vintage Marshall, Malcolm Young, AC/DC, rhythm, plexi, super lead\ntone reason: Chosen for authentic classic 70s British rock crunch. Malcolm Young's tone is dry, dynamic, and mid-forward without modern saturated distortion. British Lead S100 represents the iconic Plexi 1959/Super Lead 100 watt crunch perfectly.\navailable controls used: Gain: 4.0, Bass: 4.5, Middle: 7.5, Treble: 5.5, Presence: 5.0, Reverb: 0.0, Volume: 7.5\nany controls requested but unavailable: None\n\nselected Cab Name: 4x12 Brit 8000\nselected Speaker Name: Brit Green\ncab, speaker & microphone reason: British closed-back 4x12 paired with Greenback-style (Brit Green) speakers for classic organic crunch, rich midrange response, and vintage compression characteristics. Dynamic 57 as a primary close mic gives presence and pick attack, while Ribbon 121 adds warmth and body."
+      },
+      confidence: 100
+    };
+  }
+
   if (
     useValidationRecipes &&
     lowerPrompt.includes("metallica") &&
@@ -191,7 +348,8 @@ export async function translateTone(
       engineering_notes: {
         gain_strategy: "OverScream clean boost into high-gain Brit 8000.",
         noise_control: "Fast noise gate threshold set to clip early thrash silence.",
-        eq_strategy: "V-shape with forward high-mids via Graphic EQ."
+        eq_strategy: "V-shape with forward high-mids via Graphic EQ.",
+        amplifier_debug: "selected TT Gear Name: Brit 8000\nmatched aliases/tags: early thrash, Metallica, rhythm, brit 8000\ntone reason: Matches 80s thrash metal requests ideally. JCM800/Brit 8000 selected for iconic midrange punch and raw power tube saturation.\navailable controls used: Pre Amp: 7.0, Bass: 4.0, Middle: 7.5, Treble: 7.0, Presence: 7.8, Master: 6.0\nany controls requested but unavailable: None\n\nselected Cab Name: 4x12 Brit 8000\nselected Speaker Name: Brit 75\ncab, speaker & microphone reason: Closed-back Marshall-style 4x12 chosen as the metal standard for high-end projection and controlled low-end chugs. Coupled with Brit 75 (G12T-75) speakers to capture the authentic extended highs and raw, buzzy, scooped low-end texture of early 1980s American-British thrash. Dynamic 57 provides pick attack and presence, while Ribbon 121 smooths high-frequency buzz."
       },
       confidence: 100
     };
@@ -215,7 +373,7 @@ export async function translateTone(
     while (retries <= maxRetries) {
       try {
         const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-3.5-flash",
           contents: [{ role: 'user', parts }],
           config: {
             responseMimeType: "application/json",
@@ -396,12 +554,42 @@ function adjustThrashPedalSelection(result: ToneResult, textPrompt: string): Ton
     "saturated dirty lead tones"
   ].some(kw => lowerPrompt.includes(kw));
 
+  // Check if the user specifically wants a raw/fuzzy/buzzy early thrash or vintage metal feel with more clipping texture
+  const hasRawVintageThrashKeywords = [
+    "early thrash",
+    "kill 'em all",
+    "kill em all",
+    "raw",
+    "fuzzy",
+    "buzzy",
+    "dirty",
+    "aggressive vintage metal",
+    "vintage thrash",
+    "vintage metal",
+    "clipping texture",
+    "harmonic buzz",
+    "rawness"
+  ].some(kw => lowerPrompt.includes(kw));
+
   // Determine if we should enforce OverScream over PROdrive based on logical constraints
-  const shouldEnforceOverScream = (hasThrashKeywords || selectsMarshallAmp) && !hasExplicitRatOrFuzzKeywords;
+  // If explicitly thrash, force OverScream even if they mention "fuzzy/raw" (which they want in the OverScream context)
+  const shouldEnforceOverScream = (hasThrashKeywords || selectsMarshallAmp) && !(hasExplicitRatOrFuzzKeywords && !hasThrashKeywords);
 
   if (shouldEnforceOverScream) {
     let hasBoostOrDrive = false;
     
+    // Choose settings: raw vintage thrash uses higher drive/lower level for clipping diode texture,
+    // whereas modern high-gain/active thrash uses clean level push/low drive for tightness.
+    const overScreamSettings = hasRawVintageThrashKeywords ? {
+      "Drive": 4.5,
+      "Tone": 5.5,
+      "Level": 6.5
+    } : {
+      "Drive": 1.0,
+      "Tone": 6.8,
+      "Level": 9.0
+    };
+
     result.signal_chain = result.signal_chain.map(el => {
       if (el.type === "pedal") {
         const pName = el.name.toLowerCase();
@@ -418,15 +606,11 @@ function adjustThrashPedalSelection(result: ToneResult, textPrompt: string): Ton
 
         if (isDriveOrRat) {
           hasBoostOrDrive = true;
-          // Return OverScream with correct thrash settings
+          // Return OverScream with correct context-aware settings
           return {
             ...el,
             name: "OverScream",
-            settings: {
-              "Drive": 1.0,
-              "Tone": 6.8,
-              "Level": 9.0
-            }
+            settings: { ...overScreamSettings }
           };
         }
       }
@@ -438,11 +622,7 @@ function adjustThrashPedalSelection(result: ToneResult, textPrompt: string): Ton
       const overScreamElement: SignalChainElement = {
         type: "pedal",
         name: "OverScream",
-        settings: {
-          "Drive": 1.0,
-          "Tone": 6.8,
-          "Level": 9.0
-        }
+        settings: { ...overScreamSettings }
       };
 
       // Insert OverScream before the first amp element
@@ -454,10 +634,15 @@ function adjustThrashPedalSelection(result: ToneResult, textPrompt: string): Ton
       }
     }
     
-    // Also, update the engineering notes to explain the tight thrash settings of OverScream
+    // Also, update the engineering notes to explain the tight vs raw thrash settings of OverScream
     if (result.engineering_notes) {
-      result.engineering_notes.gain_strategy = "Clean OverScream boost (Drive 1.0, Level 9.0) to aggressively tighten pre-gain low end, driving the amp into focused thrash saturation without muddy smear.";
-      result.engineering_notes.eq_strategy = "Upper-mid boost from OverScream to cut through, maintaining sharp pick attack and tight palm mutes.";
+      if (hasRawVintageThrashKeywords) {
+        result.engineering_notes.gain_strategy = "Vintage OverScream boost (Drive 4.5, Level 6.5) to introduce warm pedal diode clipping and harmonic buzz before the preamp, providing authentic early-thrash distortion texture.";
+        result.engineering_notes.eq_strategy = "Upper-mid push from OverScream to keep the notes focused and raw, preserving classic 1980's aggressive distortion bite.";
+      } else {
+        result.engineering_notes.gain_strategy = "Clean OverScream boost (Drive 1.0, Level 9.0) to aggressively tighten pre-gain low end, driving the amp into focused thrash saturation without muddy smear.";
+        result.engineering_notes.eq_strategy = "Upper-mid boost from OverScream to cut through, maintaining sharp pick attack and tight palm mutes.";
+      }
     }
     
     if (result.tone_summary && result.tone_summary.style) {

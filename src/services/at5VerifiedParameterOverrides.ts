@@ -302,4 +302,17 @@ export const AT5_VERIFIED_GEAR: VerifiedGearDef[] = [
       { friendlyName: "Out Level", xmlName: "OutLevel", min: 0, max: 1, defaultValue: 1 }
     ],
   },
+  {
+    name: "Red Pig",
+    category: "amp",
+    realId: "",
+    params: [
+      { friendlyName: "Presence", xmlName: "PresenceMarshallMajor_param", min: 0, max: 10, defaultValue: 5, aliases: ["presence"] },
+      { friendlyName: "Bass", xmlName: "BassMarshallMajor_param", min: 0, max: 10, defaultValue: 5, aliases: ["bass"] },
+      { friendlyName: "Middle", xmlName: "MidMarshallMajor_param", min: 0, max: 10, defaultValue: 5, aliases: ["middle", "mid"] },
+      { friendlyName: "Treble", xmlName: "TrebleMarshallMajor_param", min: 0, max: 10, defaultValue: 5, aliases: ["treble"] },
+      { friendlyName: "Volume 1", xmlName: "Loudness1MarshallMajor_param", min: 0, max: 10, defaultValue: 5, aliases: ["volume 1", "loudness 1", "volume1"] },
+      { friendlyName: "Volume 2", xmlName: "Loudness2MarshallMajor_param", min: 0, max: 10, defaultValue: 4, aliases: ["volume 2", "loudness 2", "volume2"] },
+    ],
+  },
 ];

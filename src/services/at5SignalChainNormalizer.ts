@@ -118,6 +118,112 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "mesa mark v": "Mark V",
   "mark v": "Mark V",
 
+  // Guide-derived amplifier aliases
+  "bogner ecstasy": "German 34",
+  "bogner xtc": "German 34",
+  "bogner 3534": "German 34",
+  "bogner": "German 34",
+  "german 34": "German 34",
+
+  "friedman pink taco": "MiniPlex 20",
+  "pink taco": "MiniPlex 20",
+  "miniplex 20": "MiniPlex 20",
+  "friedman pt20": "MiniPlex 20",
+  "friedman": "MiniPlex 20",
+
+  "peavey 5150": "Metal Lead V",
+  "5150": "Metal Lead V",
+  "evh 5150": "Metal Lead V",
+  "metal lead v": "Metal Lead V",
+
+  "soldano slo100": "SLD 100",
+  "soldano slo-100": "SLD 100",
+  "slo-100": "SLD 100",
+  "slo100": "SLD 100",
+  "sld 100": "SLD 100",
+
+  "diezel vh4": "VHandcraft 4",
+  "diezel vh-4": "VHandcraft 4",
+  "vh4": "VHandcraft 4",
+  "vhandcraft 4": "VHandcraft 4",
+  "diezel": "VHandcraft 4",
+
+  "randall warhead": "Metal Lead W",
+  "warhead": "Metal Lead W",
+  "metal lead w": "Metal Lead W",
+
+  "orange dual terror": "Orange Dual Terror",
+  "dual terror": "Orange Dual Terror",
+
+  "mesa mark iii": "American Clean MKIII",
+  "mark iii combo": "American Clean MKIII",
+  "american clean mkiii": "American Clean MKIII",
+  "american lead mkiii": "American Lead MKIII",
+
+  "vox ac30 top boost": "British Blue Tube 30TB",
+  "vox ac30 blue panel": "British Blue Tube 30TB",
+  "ac30 blue panel": "British Blue Tube 30TB",
+  "british blue tube 30tb": "British Blue Tube 30TB",
+
+  "vox ac30 copper panel": "British Copper 30TB",
+  "ac30 copper panel": "British Copper 30TB",
+  "british copper 30tb": "British Copper 30TB",
+  "british copper": "British Copper 30TB",
+
+  "aguilar db750": "New York B750",
+  "aguilar": "New York B750",
+  "new york b750": "New York B750",
+
+  "ampeg ba500": "SVX-500",
+  "svx 500": "SVX-500",
+
+  "ampeg b15r": "SVX-15R",
+  "portaflex": "SVX-15R",
+  "svx 15r": "SVX-15R",
+
+  "ampeg svt classic": "SVX-CL",
+  "svt classic": "SVX-CL",
+  "svx cl": "SVX-CL",
+
+  "ampeg svt 4 pro": "SVX-PRO",
+  "svt 4 pro": "SVX-PRO",
+  "svx pro": "SVX-PRO",
+
+  "ampeg svt vr": "SVX-VR",
+  "svt vr": "SVX-VR",
+  "svx vr": "SVX-VR",
+
+  "ampeg v 4b": "SVX-4B",
+  "v 4b": "SVX-4B",
+  "svx 4b": "SVX-4B",
+
+  "ampeg heritage b 15n": "SVX-15N",
+  "ampeg heritage": "SVX-15N",
+  "svx 15n": "SVX-15N",
+
+  "carvin v3m": "V3M",
+  "v3m": "V3M",
+
+  "randall rg 100 es": "Darrell 100",
+  "randall rg100": "Darrell 100",
+  "darrell 100": "Darrell 100",
+
+  "dr z maz 18": "MAZ 18 Jr.",
+  "maz 18 jr": "MAZ 18 Jr.",
+  "maz 18": "MAZ 18 Jr.",
+
+  "dr z wreck": "Z Wreck",
+  "z wreck": "Z Wreck",
+
+  "engl e650": "E650",
+  "e650": "E650",
+
+  "engl powerball": "Powerball",
+  "powerball": "Powerball",
+
+  "tonex": "AmpliTube TONEX",
+  "amplitube tonex": "AmpliTube TONEX",
+
   // Cabs
   "4x12 british lead s100": "4x12 British Lead S100",
   "4x12 british tube lead 1": "Cabinet British Tube Lead 1",
@@ -127,6 +233,46 @@ const GEAR_NAME_MAP: Record<string, string> = {
   "4x12 british 30 v30 speakers": "4x12 Brit 8000",
   "v30 4x12": "4x12 Brit 8000",
   "greenbacks": "4x12 Brit 8000", // Generic mapping for greenback cabs if needed
+
+  // Detailed Cabinet & Combo mappings
+  "4x12 closed 75 c": "4x12 Closed 75 C",
+  "4x12 closed 75c": "4x12 Closed 75 C",
+  "4x12 modern closed": "4x12 Modern Closed",
+  "4x12 standard rectifier": "4x12 Standard Rectifier",
+  "2x12 jazz": "2x12 Jazz",
+  "1x12 65 deluxe reverb": "1x12 '65 Deluxe Reverb",
+  "1x12 deluxe reverb": "1x12 '65 Deluxe Reverb",
+  "2x12 65 twin reverb": "2x12 '65 Twin Reverb",
+  "2x12 twin reverb": "2x12 '65 Twin Reverb",
+  "1x10 65 princeton": "1x10 '65 Princeton",
+  "1x10 princeton": "1x10 '65 Princeton",
+  "4x10 59 bassman": "4x10 '59 Bassman",
+  "4x10 bassman": "4x10 '59 Bassman",
+  "4x12 closed vintage": "4x12 Closed Vintage",
+
+  // Speaker normalizations
+  "brit green": "Brit Green",
+  "greenback": "Brit Green",
+  "celestion greenback": "Brit Green",
+  "brit v1": "Brit V1",
+  "brit v2": "Brit V2",
+  "vintage 30": "Brit V1",
+  "celestion vintage 30": "Brit V1",
+  "v30": "Brit V1",
+  "brit 75": "Brit 75",
+  "g12t 75": "Brit 75",
+  "g12t-75": "Brit 75",
+  "celestion g12t-75": "Brit 75",
+  "american 12c": "American 12C",
+  "jensen c12q": "American 12C",
+  "american 12k": "American 12K",
+  "jensen c12k": "American 12K",
+  "ev darkness": "EV Darkness",
+  "evm 12l": "EV Darkness",
+  "evm-12l": "EV Darkness",
+  "electro voice evm 12l": "EV Darkness",
+  "electro-voice evm-12l": "EV Darkness",
+  "jazz 12": "Jazz 12",
 
   // EQ / rack aliases
   "graphic eq": "10 Band Graphic",

@@ -6,6 +6,7 @@ import { auth } from "./firebase";
 export interface VerifiedMapping {
   guid: string;
   aliases: string[];
+  brand?: string;
   isDbRecord?: boolean;
 }
 
@@ -18,13 +19,39 @@ let VERIFIED_CAB_GUIDS: VerifiedMapping[] = [
 ];
 
 let VERIFIED_SPEAKER_GUIDS: VerifiedMapping[] = [
-  { guid: "e372dd04b11d49588c290fbe341e97ca", aliases: ["Brit 75", "British 75", "G12T-75", "Celestion G12T-75", "75", "Brit75", "Stock"] },
-  { guid: "a56188a9a6bc4373903dbbde779548f1", aliases: ["Brit Green", "Greenback", "Greenback G12M", "G12M", "Celestion Greenback", "Celestion G12M", "Green", "Stock"] },
-  { guid: "2dc1a3c46a204deba9cd5e939ae1e1fa", aliases: ["Vintage 30", "Celestion V30", "V30", "Recto V30", "Vintage30", "Brit V30", "Stock"] },
-  { guid: "9422a3d95e6b4c63bc6db15fcbd99f09", aliases: ["Brit Vintage 16B", "Vintage 30", "Celestion V30", "V30", "Recto V30", "Vintage30", "Brit V30", "Stock"] },
-  { guid: "b413c57dca9541778646330ee16375c5", aliases: ["Brit Vintage 16A", "Brit V30", "Vintage 30", "V30", "Stock"] },
-  { guid: "f755dce5b3004aae8b07adac9da35705", aliases: ["Jazz 12", "Jazz12", "Stock"] },
-  { guid: "942153d281fb4b089fc20e07a34e9ca7", aliases: ["Brit 80", "British 80", "Brit80", "Stock"] },
+  { guid: "a1a8c3d4b5f64c63bc6db15fcbd99f10", brand: "Celestion", aliases: ["Brit 100", "Celestion G12K-100", "G12K-100", "Celestion G12K 100", "G12K 100", "Stock"] },
+  { guid: "e372dd04b11d49588c290fbe341e97ca", brand: "Celestion", aliases: ["Brit 75", "British 75", "Celestion G12T-75", "G12T-75", "75", "Celestion G12T 75", "G12T 75", "Brit75", "Stock"] },
+  { guid: "942153d281fb4b089fc20e07a34e9ca7", brand: "Celestion", aliases: ["Brit 80", "British 80", "Celestion G12-80", "G12-80", "Celestion G12 80", "G12 80", "Classic Lead 80", "Celestion Classic Lead 80", "Brit80", "Stock"] },
+  { guid: "b2da3c46a204deba9cd5e939ae1e1fa", brand: "Celestion", aliases: ["Brit Alnico B", "Celestion G12 T530 (Alnico) Blue", "Celestion G12 T530 Blue", "Celestion Alnico Blue", "G12 T530 Blue", "Alnico Blue", "Stock"] },
+  { guid: "c3ea3c46a204deba9cd5e939ae1e1f2b", brand: "Celestion", aliases: ["Brit Alnico G", "Celestion Gold (Alnico)", "Celestion Gold Alnico", "Celestion Gold", "Gold Alnico", "Gold", "Stock"] },
+  { guid: "d4fa3c46a204deba9cd5e939ae1e1f3c", brand: "Celestion", aliases: ["Brit Alnico S", "Celestion G12 T652 B025", "Celestion G12 T652", "G12 T652", "Goodmans Audiom 60", "Audiom 60", "Stock"] },
+  { guid: "e50a3c46a204deba9cd5e939ae1e1f4d", brand: "Celestion", aliases: ["Brit Anniversary 1", "Celestion G12H (70th) Anniversary", "G12H 70th Anniversary", "Celestion G12H Anniversary", "G12H Anniversary", "Stock"] },
+  { guid: "f61a3c46a204deba9cd5e939ae1e1f5e", brand: "Celestion", aliases: ["Brit Anniversary 2", "Celestion G12H (70th) Anniversary", "Celestion G12H", "Anniversary 2", "Stock"] },
+  { guid: "a11a3c46a204deba9cd5e939ae1e1f6f", brand: "Celestion", aliases: ["Brit Darkness", "Celestion Black Shadow C90", "Mesa Boogie C90", "Mesa Black Shadow", "Black Shadow C90", "MC-90", "Stock"] },
+  { guid: "a56188a9a6bc4373903dbbde779548f1", brand: "Celestion", aliases: ["Brit Green", "Greenback", "Greenback G12M", "G12M", "Celestion Greenback", "Celestion G12M", "Green", "G12M-25", "Stock"] },
+  { guid: "b12c3d4b5f64c63bc6db15fcbd99f11a", brand: "Celestion", aliases: ["Brit Silver", "Celestion V12-60", "V12-60", "Celestion V12 60", "Stock"] },
+  { guid: "c23d4b5f64c63bc6db15fcbd99f12b", brand: "Celestion", aliases: ["Brit T12G", "Celestion G12T", "G12T", "Marshall Valvestate Speaker", "Stock"] },
+  { guid: "2dc1a3c46a204deba9cd5e939ae1e1fa", brand: "Celestion", aliases: ["Brit V1", "Celestion Vintage 30", "Vintage 30", "Celestion V30", "V30", "Mesa Custom Vintage 30", "Mesa V30", "Stock"] },
+  { guid: "d34e4b5f64c63bc6db15fcbd99f13c", brand: "Celestion", aliases: ["Brit V2", "Celestion Vintage 30", "Vintage 30", "Celestion V30", "V30", "Mesa Custom 8 Ohm", "Stock"] },
+  { guid: "e45f4b5f64c63bc6db15fcbd99f14d", brand: "Celestion", aliases: ["Brit V3", "Celestion Vintage 30", "Marshall Vintage 30", "Marshall 70 watt", "Stock"] },
+  { guid: "b413c57dca9541778646330ee16375c5", brand: "Celestion", aliases: ["Brit Vintage 16A", "Celestion Vintage 30", "Vintage 30", "V30", "Vintage 30 China", "Stock"] },
+  { guid: "9422a3d95e6b4c63bc6db15fcbd99f09", brand: "Celestion", aliases: ["Brit Vintage 16B", "Celestion Vintage 30", "Vintage 30", "V30", "Vintage 30 UK", "Stock"] },
+  { guid: "f56a4b5f64c63bc6db15fcbd99f15e", brand: "Celestion", aliases: ["Brit Vintage 8", "Celestion Vintage 30", "Vintage 30 8 Ohm", "Stock"] },
+  { guid: "a1c3d4b5f64c63bc6db15fcbd99f16f", brand: "Jensen", aliases: ["American 12C", "Jensen C12Q", "C12Q", "Jensen C12Q Speaker", "American Clean Speaker", "Stock"] },
+  { guid: "b1d3d4b5f64c63bc6db15fcbd99f17a", brand: "Jensen", aliases: ["American 12K", "Jensen C12K", "C12K", "Jensen C12K Speaker", "Deluxe Reverb Speaker", "Stock"] },
+  { guid: "c1e3d4b5f64c63bc6db15fcbd99f18b", brand: "Jensen", aliases: ["American Alnico", "Jensen P12Q", "P12Q", "Alnico Jensen P12Q", "Stock"] },
+  { guid: "d1f3d4b5f64c63bc6db15fcbd99f19c", brand: "Jensen", aliases: ["American J40", "Jensen Blackbird", "Blackbird 40", "Blackbird", "Stock"] },
+  { guid: "e20a3c46a204deba9cd5e939ae1e1e0a", brand: "Jensen", aliases: ["American J100", "Jensen Jet", "Jensen Jet Series", "Stock"] },
+  { guid: "f31b4b5f64c63bc6db15fcbd99f20a", brand: "VHT", aliases: ["American Bulldog", "VHT G-100-E", "G-100-E", "Stock"] },
+  { guid: "a42b4b5f64c63bc6db15fcbd99f21b", brand: "JBL", aliases: ["California Red", "JBL D120F", "D120F", "JBL D120", "Stock"] },
+  { guid: "b53c4b5f64c63bc6db15fcbd99f22c", brand: "Fender", aliases: ["Custom Fender", "Fender Special Design", "Custom Eminence", "Fender Eminence", "Stock"] },
+  { guid: "c64d4b5f64c63bc6db15fcbd99f23d", brand: "Carvin", aliases: ["CV GT12-16", "Carvin GT12-16", "GT12-16", "GT12 16", "Stock"] },
+  { guid: "d75e4b5f64c63bc6db15fcbd99f24e", brand: "Randall", aliases: ["Darrell Panther", "Randall Jaguar", "Jaguar Speaker", "Jaguar", "Stock"] },
+  { guid: "e86f4b5f64c63bc6db15fcbd99f25f", brand: "Electro-Voice", aliases: ["EV Darkness", "Electro-Voice EVM-12L Black Shadow", "Electro-Voice EVM-12L", "EVM-12L", "EV Darkness Black Shadow", "Stock"] },
+  { guid: "f97a5b5f64c63bc6db15fcbd99f26a", brand: "Fane", aliases: ["HiAmp", "Fane 122231", "Fane Speaker", "HiAmp Fane", "Stock"] },
+  { guid: "f755dce5b3004aae8b07adac9da35705", brand: "Roland", aliases: ["Jazz 12", "Jazz12", "Roland JC-120 Speaker", "Roland JC120 Speaker", "JC120 Speaker", "Stock"] },
+  { guid: "b28c5b5f64c63bc6db15fcbd99f27b", brand: "Peavey", aliases: ["Metal V 1200", "Peavey Sheffield 1200", "Sheffield 1200", "Peavey Sheffield", "Metal V Peavey", "Stock"] },
+  { guid: "c39d5b5f64c63bc6db15fcbd99f28c", brand: "Fisher", aliases: ["Silver Alnico", "Fisher 12-4L", "Fisher 12 4L", "Silver Alnico Fisher", "Stock"] },
 ];
 
 let VERIFIED_MIC_GUIDS: VerifiedMapping[] = [

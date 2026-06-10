@@ -28,6 +28,7 @@ export interface EngineeringNotes {
   gain_strategy: string;
   noise_control: string;
   eq_strategy: string;
+  amplifier_debug?: string;
 }
 
 export interface ToneResult {

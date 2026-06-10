@@ -683,22 +683,34 @@ export default function App() {
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
                       <p className="text-[8px] text-gray-600 uppercase font-mono mb-2 tracking-widest">Gain Strategy</p>
                       <p className="text-[11px] text-gray-400 italic leading-relaxed">
-                        {toneResult.engineering_notes.gain_strategy}
+                        {toneResult.engineering_notes?.gain_strategy}
                       </p>
                     </div>
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
                       <p className="text-[8px] text-gray-600 uppercase font-mono mb-2 tracking-widest">Noise Control</p>
                       <p className="text-[11px] text-gray-400 italic leading-relaxed">
-                        {toneResult.engineering_notes.noise_control}
+                        {toneResult.engineering_notes?.noise_control}
                       </p>
                     </div>
                     <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
                       <p className="text-[8px] text-gray-600 uppercase font-mono mb-2 tracking-widest">EQ Strategy</p>
                       <p className="text-[11px] text-gray-400 italic leading-relaxed">
-                        {toneResult.engineering_notes.eq_strategy}
+                        {toneResult.engineering_notes?.eq_strategy}
                       </p>
                     </div>
                   </div>
+
+                  {toneResult.engineering_notes?.amplifier_debug && (
+                    <div className="mt-6 p-6 rounded-2xl bg-[#090d16]/30 border border-cyan-500/10 hover:border-cyan-500/20 transition-all font-mono">
+                      <p className="text-[9px] text-cyan-400 font-bold uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse shadow-[0_0_8px_#22d3ee]" />
+                        Amplifier Selection & Calibration Engine (TT-02 Reference)
+                      </p>
+                      <div className="text-[10px] text-gray-400 leading-relaxed whitespace-pre-line space-y-2">
+                        {toneResult.engineering_notes?.amplifier_debug}
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 <div className="flex flex-wrap gap-4 pt-2">

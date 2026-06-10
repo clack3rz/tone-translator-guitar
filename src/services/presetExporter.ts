@@ -7,6 +7,7 @@ import { AT5_EMPTY_SLOT_GUID, findAT5GearGuid, findAT5Gear, getAt5Catalog } from
 import {
   buildMappedParameterAttrs,
   resolveVerifiedOrManifestRealId,
+  getParameterDefinitions,
 } from "./at5ParameterManifest";
 
 import { getVerifiedCabs, getVerifiedSpeakers, getVerifiedMics } from "./at5VerifiedProtocols";
@@ -210,13 +211,16 @@ const buildAmpSection = (
   section: "A" | "B" | "C",
   amp?: SignalChainElement
 ) => {
-  const ampName = amp?.name ?? "Brit 8000";
+  if (!amp) {
+    return `    <Amp${section} Bypass="1" Mute="1" OutputVolume="0" Model="${DEFAULT_AMP_GUID}">\r\n        <Amp />\r\n    </Amp${section}>`;
+  }
+  const ampName = amp.name;
   const ampGuid = resolveGuid(ampName, "amp", DEFAULT_AMP_GUID);
 
   let ampAttrs = buildMappedParameterAttrs(
     ampName,
     "amp",
-    amp?.settings ?? {}
+    amp.settings ?? {}
   );
 
   if (!ampAttrs && ampGuid === DEFAULT_AMP_GUID) {
@@ -545,6 +549,9 @@ export interface ExportDebugItem {
   exported_settings: string;
   exported: boolean;
   reason: string;
+  parameter_mapping_status?: "SUCCESS" | "MISMATCH" | "UNVERIFIED" | "FAILED";
+  mismatched_parameters?: string[];
+  final_status?: "PASS" | "CHECK";
 }
 
 export interface ExportDebugData {
@@ -626,6 +633,8 @@ const makeDebugItem = (
     finalReason = "Included"; // This will trigger the "PASS" state in the UI
   }
 
+  const roomType = group === "cab" ? getRoomType(gear) : "Large Studio";
+
   if (group === "cab") {
     attrs = buildCabDebugAttrs(gear);
 
@@ -677,6 +686,109 @@ const makeDebugItem = (
     }
   }
 
+  // Parameter Mapping Verification Logic
+  let parameter_mapping_status: "SUCCESS" | "MISMATCH" | "UNVERIFIED" | "FAILED" = "SUCCESS";
+  const mismatched_parameters: string[] = [];
+
+  const parsedExported: Record<string, number | string> = {};
+  const attrRegex = /([A-Za-z0-9_]+)="([^"]*)"/g;
+  let attrMatch;
+  while ((attrMatch = attrRegex.exec(attrs)) !== null) {
+    const [_, name, val] = attrMatch;
+    const num = parseFloat(val);
+    parsedExported[name] = isNaN(num) ? val : num;
+  }
+
+  const normSettings = gear.settings ?? {};
+
+  if (exported && group !== "cab") {
+    const defs = getParameterDefinitions(gear.name, group);
+    if (defs && defs.length > 0) {
+      for (const [normKey, normVal] of Object.entries(normSettings)) {
+        const cleanNormKey = normKey.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (["bypass", "mute", "volume", "output", "level", "pan", "status", "gain_level", "noise_level"].includes(cleanNormKey)) {
+          continue;
+        }
+
+        const def = defs.find((d) => {
+          const cleanFriendly = d.friendlyName.toLowerCase().replace(/[^a-z0-9]/g, "");
+          const cleanXml = d.xmlName.toLowerCase().replace(/[^a-z0-9]/g, "");
+          const cleanAliases = (d.aliases ?? []).map((a) => a.toLowerCase().replace(/[^a-z0-9]/g, ""));
+          return (
+            cleanFriendly === cleanNormKey ||
+            cleanXml === cleanNormKey ||
+            cleanAliases.includes(cleanNormKey)
+          );
+        });
+
+        if (def) {
+          const expVal = parsedExported[def.xmlName];
+          if (expVal !== undefined) {
+            const nv = typeof normVal === "number" ? normVal : parseFloat(String(normVal));
+            const ev = typeof expVal === "number" ? expVal : parseFloat(String(expVal));
+
+            if (!isNaN(nv) && !isNaN(ev)) {
+              if (Math.abs(nv - ev) > 0.15) {
+                mismatched_parameters.push(
+                  `${def.friendlyName} (Intended: ${nv}, Exported: ${ev})`
+                );
+              }
+            } else if (String(normVal).trim().toLowerCase() !== String(expVal).trim().toLowerCase()) {
+              mismatched_parameters.push(
+                `${def.friendlyName} (Intended: '${normVal}', Exported: '${expVal}')`
+              );
+            }
+          } else {
+            mismatched_parameters.push(
+              `${def.friendlyName} (Unable to map or missing in exported settings)`
+            );
+          }
+        } else {
+          mismatched_parameters.push(
+            `${normKey} (Unsupported/unmapped parameter for this gear)`
+          );
+        }
+      }
+    } else {
+      parameter_mapping_status = "UNVERIFIED";
+    }
+  } else if (exported && group === "cab") {
+    // Cab RoomType and speaker/mic checks with specific robust comparisons
+    const normRoom = String(normSettings.Room || normSettings.room || "").toLowerCase();
+    const expRoom = String(parsedExported.RoomType || "").toLowerCase();
+
+    if (normRoom && expRoom) {
+      const getCleanRoom = (r: string) => {
+        const rl = r.toLowerCase();
+        if (rl.includes("small") || rl.includes("dry")) return "small";
+        if (rl.includes("closet")) return "closet";
+        if (rl.includes("bathroom")) return "bathroom";
+        if (rl.includes("garage")) return "garage";
+        if (rl.includes("hall")) return "hall";
+        if (rl.includes("mid")) return "mid";
+        return "large"; // Default fallback
+      };
+
+      const cleanNorm = getCleanRoom(normRoom);
+      const cleanExp = getCleanRoom(expRoom);
+
+      if (cleanNorm !== cleanExp) {
+        mismatched_parameters.push(
+          `RoomType (Intended: '${normSettings.Room || normSettings.room}', Exported: '${parsedExported.RoomType}')`
+        );
+      }
+    }
+  }
+
+  let final_status: "PASS" | "CHECK" = "PASS";
+  let finalExported = exported;
+  if (mismatched_parameters.length > 0) {
+    parameter_mapping_status = "MISMATCH";
+    final_status = "CHECK";
+    finalReason = `Check: Parameter discrepancies found! [${mismatched_parameters.join(", ")}]`;
+    finalExported = false; // Do not show exported: true when mismatched settings exist
+  }
+
   return {
     original_name: pair.raw.name,
     normalized_name: gear.name,
@@ -688,8 +800,11 @@ const makeDebugItem = (
     original_settings: pair.raw.settings ?? {},
     normalized_settings: gear.settings ?? {},
     exported_settings: attrs,
-    exported,
+    exported: finalExported,
     reason: finalReason,
+    parameter_mapping_status,
+    mismatched_parameters,
+    final_status,
   };
 };
 
@@ -768,17 +883,32 @@ export const getExportDebugData = (
 
     if (gear.type === "amp") {
       group = "amp";
-      reason = "Skipped: only AmpA/AmpB/AmpC are available.";
+      const guid = resolveGuid(gear.name, "amp", "");
+      if (!guid || guid.trim() === "") {
+        reason = `Skipped: "${gear.name}" lacks a verified GUID mapping. Please use gear discovery to import.`;
+      } else {
+        reason = "Skipped: only AmpA/AmpB/AmpC are available.";
+      }
     } else if (gear.type === "cab") {
       group = "cab";
-      reason = "Skipped: only CabA is currently exported.";
+      const catalogMatch = findAT5Gear(gear.name, "cab");
+      const hasCatalogGuid = catalogMatch && catalogMatch.guid && catalogMatch.guid.trim() !== "";
+      const isVerified = getVerifiedCabs().some((v) => scoreNames(gear.name, v.aliases));
+      if (!isVerified && !hasCatalogGuid) {
+        reason = `Skipped: "${gear.name}" lacks a verified GUID mapping. Please use gear discovery to import.`;
+      } else {
+        reason = "Skipped: only CabA is currently exported.";
+      }
     } else if (
       gear.type === "rack" ||
       (gear.type === "pedal" && isPostAmpRack(gear))
     ) {
       group = "rack";
-
-      if (!isVerifiedRackGear(gear)) {
+      const cat = isPostAmpRack(gear) ? "rack" : "stomp";
+      const guid = resolveGuid(gear.name, cat, "");
+      if (!guid || guid.trim() === "") {
+        reason = `Skipped: "${gear.name}" lacks a verified GUID mapping. Please use gear discovery to import.`;
+      } else if (!isVerifiedRackGear(gear)) {
         reason =
           "Skipped: unverified rack gear. Only verified Parametric/Graphic EQ and select compressors are currently exported to RackA.";
       } else {
@@ -786,7 +916,12 @@ export const getExportDebugData = (
       }
     } else if (gear.type === "pedal") {
       group = "stomp";
-      reason = "Skipped: stomp slot limit reached.";
+      const guid = resolveGuid(gear.name, "stomp", "");
+      if (!guid || guid.trim() === "") {
+        reason = `Skipped: "${gear.name}" lacks a verified GUID mapping. Please use gear discovery to import.`;
+      } else {
+        reason = "Skipped: stomp slot limit reached.";
+      }
     }
 
     skippedGear.push(makeDebugItem(pair, "None", -1, group, false, reason));
